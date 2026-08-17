@@ -1,0 +1,31 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: misetlist_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: misetlist
+      POSTGRES_PASSWORD: misetlist_secret
+      POSTGRES_DB: misetlist
+    ports:
+      # 5434 en tu Mac porque Mis Gastos usa 5433
+      - "5434:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U misetlist -d misetlist"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: misetlist_mailpit
+    restart: unless-stopped
+    ports:
+      # 1026/8026 en tu Mac porque Mis Gastos usa 1025/8025
+      - "1026:1025"
+      - "8026:8025"
+
+volumes:
+  db_data:
