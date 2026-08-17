@@ -1,4 +1,4 @@
-# 🎵 Mi SetList - Plataforma de Repertorios Musicales
+# Mi SetList - Plataforma de Repertorios Musicales
 
 Plataforma multiplataforma (iOS, Android y Web) para músicos, coros y bandas que necesitan organizar, compartir y consultar su repertorio de canciones de manera colaborativa.
 
@@ -109,7 +109,7 @@ Una vez que los contenedores estén corriendo, puedes acceder a:
 
 ## Características Principales
 
-### 🔐 Autenticación y Seguridad
+### Autenticación y Seguridad
 - Registro e inicio de sesión de usuarios
 - Verificación de correo electrónico
 - Recuperación de contraseña
@@ -118,13 +118,13 @@ Una vez que los contenedores estén corriendo, puedes acceder a:
 - Rotación de tokens y revocación remota
 - Sistema de roles y permisos granular (RBAC)
 
-### 👥 Grupos Musicales
+### Grupos Musicales
 - Crear y administrar grupos (coros, bandas, orquestas)
 - Invitar miembros por email o enlace
 - Roles dentro del grupo: Owner, Admin, Member
 - Actividad y feed del grupo
 
-### 🎵 Canciones y Repertorio
+### Canciones y Repertorio
 - CRUD completo de canciones
 - Letra con acordes estructurados
 - Notas personales por músico
@@ -133,14 +133,14 @@ Una vez que los contenedores estén corriendo, puedes acceder a:
 - Sistema de favoritos
 - Búsqueda avanzada y filtros
 
-### 📅 Eventos y Setlists
+### Eventos y Setlists
 - Crear eventos con ubicación geográfica (mapas)
 - Setlists personalizables con drag & drop
 - Tonalidad configurable por canción
 - Modo Escenario para presentaciones en vivo
 - Generación de PDFs de repertorios
 
-### 🌐 Multiplataforma
+### Multiplataforma
 - App iOS y Android (React Native + Expo)
 - Versión Web (Expo Web)
 - Diseño responsive y modo oscuro/claro
