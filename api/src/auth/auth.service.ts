@@ -1,0 +1,231 @@
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
+import { PrismaService } from '../prisma/prisma.service';
+import { MailService } from '../mail/mail.service';
+import { RegisterDto } from './dto/register.dto';
+import { LoginDto } from './dto/login.dto';
+import * as bcrypt from 'bcryptjs';
+import { createHash, randomBytes } from 'node:crypto';
+import type { User } from '@prisma/client';
+
+@Injectable()
+export class AuthService {
+  // Inyección de dependencias: BD, JWT, config y correo
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly jwt: JwtService,
+    private readonly config: ConfigService,
+    private readonly mail: MailService,
+  ) {}
+
+  // =====================================================
+  // REGISTRO
+  // =====================================================
+  async register(dto: RegisterDto) {
+    // 1) ¿El correo ya existe? → 409 Conflict
+    const exists = await this.prisma.user.findUnique({
+      where: { email: dto.email },
+    });
+    if (exists) throw new ConflictException('Ese correo ya está registrado');
+
+    // 2) Hashear la contraseña (costo 10 = 2^10 rondas de bcrypt)
+    const passwordHash = await bcrypt.hash(dto.password, 10);
+
+    // 3) Crear el usuario
+    const user = await this.prisma.user.create({
+      data: { name: dto.name, email: dto.email, passwordHash },
+    });
+
+    // 4) Token de verificación de correo:
+    //    el "crudo" viaja en el link; en BD guardamos el hash
+    const rawToken = randomBytes(32).toString('hex'); // 64 caracteres aleatorios
+    await this.prisma.emailVerificationToken.create({
+      data: {
+        userId: user.id,
+        tokenHash: this.hashToken(rawToken),
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 horas
+      },
+    });
+
+    // 5) Enviar el correo (lo verás en Mailpit :8026)
+    await this.mail.sendVerificationEmail(user, rawToken);
+
+    // 6) Emitir tokens para que quede logueado de una vez
+    const tokens = await this.issueTokens(user.id);
+
+    return { user: this.publicUser(user), ...tokens };
+  }
+
+  // =====================================================
+  // LOGIN
+  // =====================================================
+  async login(dto: LoginDto) {
+    // 1) Buscar al usuario por email
+    const user = await this.prisma.user.findUnique({
+      where: { email: dto.email },
+    });
+
+    // Mensaje genérico a propósito: no decimos "el correo no existe"
+    // vs "contraseña mala" (evita que adivinen cuentas registradas)
+    if (!user || !user.passwordHash) {
+      throw new UnauthorizedException('Credenciales inválidas');
+    }
+
+    // 2) Comparar contraseña contra el hash guardado
+    const ok = await bcrypt.compare(dto.password, user.passwordHash);
+    if (!ok) throw new UnauthorizedException('Credenciales inválidas');
+
+    // 3) Emitir tokens
+    const tokens = await this.issueTokens(user.id);
+    return { user: this.publicUser(user), ...tokens };
+  }
+
+  // =====================================================
+  // REFRESH (rotación de tokens)
+  // =====================================================
+  async refresh(rawRefresh: string) {
+    // 1) Buscar el token en BD por su hash
+    const stored = await this.prisma.refreshToken.findUnique({
+      where: { tokenHash: this.hashToken(rawRefresh) },
+    });
+
+    // 2) Debe existir, no estar revocado y no estar expirado
+    if (!stored || stored.revokedAt || stored.expiresAt < new Date()) {
+      throw new UnauthorizedException('Refresh token inválido');
+    }
+
+    // 3) Además verificamos la firma JWT (doble seguridad)
+    try {
+      await this.jwt.verifyAsync(rawRefresh, {
+        secret: this.config.get('JWT_REFRESH_SECRET'),
+      });
+    } catch {
+      throw new UnauthorizedException('Refresh token inválido');
+    }
+
+    // 4) ROTACIÓN: el token viejo muere y se emite uno nuevo.
+    //    Si alguien roba un refresh token y lo usa dos veces,
+    //    la segunda falla → y podemos detectar el robo.
+    await this.prisma.refreshToken.update({
+      where: { id: stored.id },
+      data: { revokedAt: new Date() },
+    });
+
+    return this.issueTokens(stored.userId);
+  }
+
+  // =====================================================
+  // LOGOUT
+  // =====================================================
+  async logout(userId: string, rawRefresh?: string) {
+    if (rawRefresh) {
+      // Revocar solo el token enviado
+      await this.prisma.refreshToken.updateMany({
+        where: { tokenHash: this.hashToken(rawRefresh), userId },
+        data: { revokedAt: new Date() },
+      });
+    } else {
+      // "Cerrar sesión en todos lados": revocar todos sus tokens
+      await this.prisma.refreshToken.updateMany({
+        where: { userId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+    }
+    return { message: 'Sesión cerrada' };
+  }
+
+  // =====================================================
+  // PERFIL DEL USUARIO AUTENTICADO
+  // =====================================================
+  async me(userId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException('Usuario no encontrado');
+    return this.publicUser(user);
+  }
+
+  // =====================================================
+  // VERIFICACIÓN DE CORREO
+  // =====================================================
+  async verifyEmail(rawToken: string) {
+    const stored = await this.prisma.emailVerificationToken.findUnique({
+      where: { tokenHash: this.hashToken(rawToken) },
+    });
+
+    // Debe existir, no haberse usado y no estar expirado
+    if (!stored || stored.usedAt || stored.expiresAt < new Date()) {
+      throw new BadRequestException('Enlace inválido o expirado');
+    }
+
+    // Transacción: o pasan las dos cosas, o ninguna
+    await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { id: stored.userId },
+        data: { emailVerifiedAt: new Date() },
+      }),
+      this.prisma.emailVerificationToken.update({
+        where: { id: stored.id },
+        data: { usedAt: new Date() },
+      }),
+    ]);
+
+    return { message: 'Correo verificado correctamente 🎉' };
+  }
+
+  // =====================================================
+  // HELPERS PRIVADOS
+  // =====================================================
+
+  // Emite access + refresh token y guarda el refresh hasheado en BD
+  private async issueTokens(userId: string) {
+    const accessToken = await this.jwt.signAsync(
+      { sub: userId }, // "sub" = subject: el id del usuario
+      {
+        secret: this.config.get('JWT_ACCESS_SECRET'),
+        expiresIn: this.config.get('JWT_ACCESS_EXPIRES_IN'), // 15m
+      },
+    );
+
+    const refreshToken = await this.jwt.signAsync(
+      { sub: userId, type: 'refresh' },
+      {
+        secret: this.config.get('JWT_REFRESH_SECRET'),
+        expiresIn: this.config.get('JWT_REFRESH_EXPIRES_IN'), // 7d
+      },
+    );
+
+    // Guardamos el refresh HASHEADO con su expiración
+    await this.prisma.refreshToken.create({
+      data: {
+        userId,
+        tokenHash: this.hashToken(refreshToken),
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 días
+      },
+    });
+
+    return { accessToken, refreshToken };
+  }
+
+  // sha256 para hashear tokens (bcrypt es para contraseñas)
+  private hashToken(token: string): string {
+    return createHash('sha256').update(token).digest('hex');
+  }
+
+  // Quita el hash de contraseña antes de devolver el usuario
+  private publicUser(user: User) {
+    return {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      emailVerifiedAt: user.emailVerifiedAt,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    };
+  }
+}

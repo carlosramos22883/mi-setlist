@@ -1,0 +1,58 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String    @id @default(uuid())
+  name            String
+  email           String    @unique
+  passwordHash    String?
+  emailVerifiedAt DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relaciones nuevas: un usuario puede tener muchos tokens
+  refreshTokens       RefreshToken[]
+  verificationTokens  EmailVerificationToken[]
+
+  @@map("users")
+}
+
+// -----------------------------------------------
+// REFRESH TOKENS
+// -----------------------------------------------
+// Guardamos el token HASHEADO (no en texto plano):
+// si alguien roba la base de datos, no podrá usarlos.
+model RefreshToken {
+  id        String    @id @default(uuid())
+  tokenHash String    @unique          // sha256 del token real
+  userId    String                     // de quién es
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime                   // cuándo muere
+  revokedAt DateTime?                  // si se revocó (logout/rotación), cuándo fue
+  createdAt DateTime  @default(now())
+
+  @@map("refresh_tokens")
+}
+
+// -----------------------------------------------
+// TOKENS DE VERIFICACIÓN DE CORREO
+// -----------------------------------------------
+// El link del correo contiene el token "crudo";
+// en la BD guardamos su hash, con expiración de 24h y un solo uso.
+model EmailVerificationToken {
+  id        String    @id @default(uuid())
+  tokenHash String    @unique
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  usedAt    DateTime?                  // null = aún no se usó
+  createdAt DateTime  @default(now())
+
+  @@map("email_verification_tokens")
+}

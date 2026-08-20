@@ -657,5 +657,23 @@ Para considerar el proyecto completo y listo para portafolio:
 - El documento sirve como contexto para retomar el proyecto en cualquier momento.  
   
 ---  
+
+## REGISTRO DE PUERTOS (todos mis proyectos)
+
+| Proyecto | Servicio | Puerto host |
+|---|---|---|
+| Mis Gastos | Web (Nginx) | 8081 |
+| Mis Gastos | PostgreSQL | 5433 |
+| Mis Gastos | PgAdmin | 5050 |
+| Mis Gastos | Mailpit SMTP | 1025 |
+| Mis Gastos | Mailpit UI | 8025 |
+| Mi SetList | API (NestJS) | 3000 |
+| Mi SetList | Web (Expo) | 8082 |
+| Mi SetList | PostgreSQL | 5434 |
+| Mi SetList | Mailpit SMTP | 1026 |
+| Mi SetList | Mailpit UI | 8026 |
+| Mi SetList | Prisma Studio | 5555 |
+
+Regla: antes de crear un proyecto nuevo, revisar esta tabla y elegir puertos libres.
   
 **FIN DEL DOCUMENTO**  
