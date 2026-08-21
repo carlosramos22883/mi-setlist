@@ -1,45 +1,38 @@
 // ============================================================
-// App.tsx = punto de entrada de la app (el "main.ts" del móvil)
+// App.tsx — punto de entrada: decide qué pantalla mostrar
 // ============================================================
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { AuthProvider, useAuth } from './src/context/AuthContext';
+import AuthScreen from './src/screens/AuthScreen';
+import HomeScreen from './src/screens/HomeScreen';
 import { colors } from './src/constants/theme';
 
-// Un componente es una función que retorna UI (JSX)
+// "Router" manual por ahora: si hay user → Home; si no → Auth
+function Root() {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    // Mientras restauramos la sesión guardada
+    return (
+      <View style={styles.loading}>
+        <ActivityIndicator size="large" color={colors.dark.primary} />
+      </View>
+    );
+  }
+
+  return user ? <HomeScreen /> : <AuthScreen />;
+}
+
 export default function App() {
   return (
-    // <View> = contenedor (como un <div>)
-    <View style={styles.container}>
-      {/* Esto es un comentario en JSX */}
-      <Text style={styles.logo}>🎵</Text>
-      <Text style={styles.title}>Mi SetList</Text>
-      <Text style={styles.subtitle}>Tu repertorio, en tu bolsillo</Text>
-
-      {/* Barra de estado del teléfono en color claro (para fondo oscuro) */}
+    <AuthProvider>
+      <Root />
       <StatusBar style="light" />
-    </View>
+    </AuthProvider>
   );
 }
 
-// StyleSheet = tu "CSS": objetos con estilos en vez de clases
 const styles = StyleSheet.create({
-  container: {
-    flex: 1, // ocupa toda la pantalla (como flex: 1 en CSS)
-    backgroundColor: colors.dark.bg, // fondo de NUESTRO design system
-    alignItems: 'center', // centrado horizontal
-    justifyContent: 'center', // centrado vertical
-  },
-  logo: {
-    fontSize: 64,
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: '700',
-    color: colors.dark.text,
-  },
-  subtitle: {
-    marginTop: 8,
-    fontSize: 15,
-    color: colors.dark.textSecondary,
-  },
+  loading: { flex: 1, backgroundColor: colors.dark.bg, alignItems: 'center', justifyContent: 'center' },
 });

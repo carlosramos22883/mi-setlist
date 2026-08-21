@@ -1,18 +1,21 @@
 // ============================================================
-// CONFIGURACIÓN DE CONEXIÓN CON LA API
+// CONFIG — conexión a la API según la plataforma
 // ============================================================
 import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 
-// Cada plataforma "ve" a tu Mac de forma distinta:
-//  - web y simulador iOS: localhost funciona directo
-//  - emulador Android: localhost es el propio emulador, por eso 10.0.2.2
-//  - celular físico: necesitas la IP local de tu Mac (ej: 192.168.1.20)
 function getApiUrl(): string {
-  if (Platform.OS === 'android') {
-    return 'http://10.0.2.2:3000/api/v1'; // emulador Android
+  // Web: el navegador llega directo a tu Mac por localhost
+  if (Platform.OS === 'web') {
+    return 'http://localhost:3000/api/v1';
   }
-  return 'http://localhost:3000/api/v1'; // web / iOS
-  // 👉 Si pruebas en CELULAR FÍSICO, cambia localhost por tu IP local
+
+  // Móvil: reutilizamos la IP con la que Metro te sirve la app.
+  //  - Celular físico:  "192.168.1.20:8082" → usa 192.168.1.20 ✅
+  //  - Emulador Android: "10.0.2.2:8082"   → usa 10.0.2.2 ✅
+  const hostUri = Constants.expoConfig?.hostUri ?? 'localhost:8082';
+  const ip = hostUri.split(':')[0];
+  return `http://${ip}:3000/api/v1`;
 }
 
 export const API_URL = getApiUrl();
