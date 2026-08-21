@@ -1,4 +1,5 @@
-// main.ts = punto de entrada de la app (el "public/index.php" de NestJS)
+// main.ts = punto de entrada de la app
+import 'dotenv/config'; // Prisma 7: garantiza que .env esté cargado antes que nada
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
@@ -46,4 +47,4 @@ async function bootstrap() {
   await app.listen(port); // enciende el servidor y lo deja escuchando
   console.log(`🎵 Mi SetList API corriendo en http://localhost:${port}`);
 }
-bootstrap(); // ejecuta la función
+void bootstrap(); // ejecuta la función

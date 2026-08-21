@@ -1,10 +1,12 @@
+// Prisma 7: el cliente se genera en src/generated/prisma
+// y se importa desde ahí (adiós @prisma/client mágico)
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+  // La URL vive en prisma.config.ts (estilo Prisma 7)
 }
 
 model User {

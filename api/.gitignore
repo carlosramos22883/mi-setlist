@@ -3,3 +3,6 @@ node_modules
 .env
 
 /generated/prisma
+
+# Cliente de Prisma generado (se regenera con npm run prisma:generate)
+src/generated/
