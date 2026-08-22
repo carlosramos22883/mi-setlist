@@ -675,5 +675,29 @@ Para considerar el proyecto completo y listo para portafolio:
 | Mi SetList | Prisma Studio | 5555 |
 
 Regla: antes de crear un proyecto nuevo, revisar esta tabla y elegir puertos libres.
+
+## NOTAS DE ARQUITECTURA (DESARROLLO LOCAL)
+- Solo se dockerizan PostgreSQL y Mailpit: son servicios de infraestructura
+  dolorosos de instalar nativamente.
+- La API NestJS corre en el host (`npm run start:dev`): iteración rápida,
+  debugging nativo y watch mode sin fricción.
+- La app Expo corre en Metro (host) y se renderiza en dispositivo/navegador:
+  no hay servidor que contenerizar en desarrollo.
+- Diferencia con Mis Gastos: Laravel requería contenedores Nginx + PHP-FPM
+  para replicar el servidor de producción; Node ya está instalado en la máquina.
+- PENDIENTE (fase deploy): Dockerfile multi-stage para la API.
+
+## SISTEMA DE DISEÑO Y ESTILOS CENTRALIZADOS
+- `mobile/src/constants/theme.ts`: tokens de color (fuente única).
+- `mobile/src/styles/global.ts`: estilos globales reutilizables
+  (el "app.css" de la app). Las pantallas componen:
+  `style={[globalStyles.x, styles.locales]}`.
+- Correos: `api/src/mail/email-template.ts` con CSS inline usando
+  `api/src/common/design-tokens.ts` (mantener sincronizado con el theme móvil).
+
+## ESTADO (actualización)
+- [x] Auth móvil/web conectada a la API (login, registro, sesión persistente, logout).
+- [x] Correo de verificación con plantilla de marca.
+- [x] Estilos centralizados (global.ts) y tokens compartidos.
   
 **FIN DEL DOCUMENTO**  
