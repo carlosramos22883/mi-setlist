@@ -38,9 +38,22 @@ export class AuthService {
     // 2) Hashear la contraseña (costo 10 = 2^10 rondas de bcrypt)
     const passwordHash = await bcrypt.hash(dto.password, 10);
 
-    // 3) Crear el usuario
+    // 3) Crear el usuario con el rol "Usuario" por defecto
+    // (el usuario NO elige su rol al registrarse)
+    const defaultRole = await this.prisma.role.findUnique({
+      where: { name: 'Usuario' },
+    });
+
     const user = await this.prisma.user.create({
-      data: { name: dto.name, email: dto.email, passwordHash },
+      data: {
+        name: dto.name,
+        email: dto.email,
+        passwordHash,
+        // Si existe el rol Usuario, lo asignamos; si no, sin rol
+        roles: defaultRole
+          ? { create: [{ roleId: defaultRole.id }] }
+          : undefined,
+      },
     });
 
     // 4) Token de verificación de correo:
@@ -142,12 +155,40 @@ export class AuthService {
   }
 
   // =====================================================
-  // PERFIL DEL USUARIO AUTENTICADO
+  // PERFIL DEL USUARIO AUTENTICADO (con roles y permisos)
   // =====================================================
   async me(userId: string) {
-    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        roles: {
+          include: {
+            role: {
+              include: {
+                permissions: { include: { permission: true } },
+              },
+            },
+          },
+        },
+      },
+    });
     if (!user) throw new NotFoundException('Usuario no encontrado');
-    return this.publicUser(user);
+
+    // Lista simple de nombres de roles
+    const roles = user.roles.map((ur) => ur.role.name);
+
+    // Lista única de nombres de permisos (Set elimina duplicados)
+    const permissions = [
+      ...new Set(
+        user.roles.flatMap((ur) =>
+          ur.role.permissions.map((rp) => rp.permission.name),
+        ),
+      ),
+    ];
+
+    // El móvil usará `permissions` para mostrar/ocultar secciones
+    // (equivalente a @can en Blade de Laravel)
+    return { ...this.publicUser(user), roles, permissions };
   }
 
   // =====================================================
