@@ -35,8 +35,8 @@ import {
 export class UsersController {
   constructor(private readonly users: UsersService) {}
 
-  // PATCH /users/me — cualquier autenticado (sin permiso especial)
-  // DEBE ir antes de ":id" para que Nest no confunda "me" con un UUID
+  // PATCH /users/me — requiere permiso profile.edit
+  @Permissions('profile.edit')
   @Patch('me')
   updateProfile(
     @CurrentUser() user: JwtPayload,
