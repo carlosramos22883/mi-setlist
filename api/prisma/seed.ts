@@ -49,7 +49,10 @@ async function main() {
   await prisma.role.upsert({
     where: { name: 'Usuario' },
     update: {},
-    create: { name: 'Usuario', description: 'Rol por defecto para cuentas nuevas' },
+    create: {
+      name: 'Usuario',
+      description: 'Rol por defecto para cuentas nuevas',
+    },
   });
 
   // Admin tiene TODOS los permisos (sync)
@@ -87,7 +90,9 @@ async function main() {
   });
 
   // Asegura que Demo tenga el rol "Usuario"
-  const demo = await prisma.user.findUnique({ where: { email: 'demo@misetlist.app' } });
+  const demo = await prisma.user.findUnique({
+    where: { email: 'demo@misetlist.app' },
+  });
   const usuario = await prisma.role.findUnique({ where: { name: 'Usuario' } });
   if (demo && usuario) {
     await prisma.userRole.upsert({
