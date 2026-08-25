@@ -9,7 +9,7 @@ import type { PrismaConfig } from 'prisma';
 export default {
   // Dónde viven el schema y las migraciones
   schema: 'prisma/schema.prisma',
-  migrations: { path: 'prisma/migrations' },
+  migrations: { path: 'prisma/migrations', seed: 'npx tsx prisma/seed.ts' },
 
   // URL de conexión para el CLI (migrate, studio, etc.)
   datasource: {

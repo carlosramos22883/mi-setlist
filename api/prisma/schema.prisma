@@ -22,6 +22,7 @@ model User {
   refreshTokens       RefreshToken[]
   verificationTokens  EmailVerificationToken[]
   passwordResetTokens PasswordResetToken[]
+  roles UserRole[]
 
   @@map("users")
 }
@@ -74,4 +75,56 @@ model PasswordResetToken {
   createdAt DateTime  @default(now())
 
   @@map("password_reset_tokens")
+}
+
+// -----------------------------------------------
+// RBAC (Role-Based Access Control) — estilo Spatie
+// -----------------------------------------------
+model Role {
+  id          String   @id @default(uuid())
+  name        String   @unique          // "Administrador", "Usuario"
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users       UserRole[]
+  permissions RolePermission[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String   @id @default(uuid())
+  name        String   @unique          // "users.create", "roles.edit"...
+  group       String                    // "users", "roles" (para agrupar en la UI)
+  description String?
+  createdAt   DateTime @default(now())
+
+  roles RolePermission[]
+
+  @@map("permissions")
+}
+
+// Tabla pivote: usuarios ↔ roles (muchos a muchos)
+model UserRole {
+  roleId    String
+  userId    String
+  role      Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([userId, roleId])
+  @@map("user_roles")
+}
+
+// Tabla pivote: roles ↔ permisos (muchos a muchos)
+model RolePermission {
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
 }
