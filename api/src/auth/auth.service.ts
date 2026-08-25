@@ -179,6 +179,66 @@ export class AuthService {
   }
 
   // =====================================================
+  // OLVIDÉ MI CONTRASEÑA
+  // =====================================================
+  async forgotPassword(email: string) {
+    const user = await this.prisma.user.findUnique({ where: { email } });
+
+    // Respuesta idéntica exista o no el correo (no revelamos cuentas)
+    const generic = {
+      message: 'Si el correo existe, te enviamos las instrucciones',
+    };
+    if (!user) return generic;
+
+    const rawToken = randomBytes(32).toString('hex');
+    await this.prisma.passwordResetToken.create({
+      data: {
+        userId: user.id,
+        tokenHash: this.hashToken(rawToken),
+        expiresAt: new Date(Date.now() + 60 * 60 * 1000), // 1 hora
+      },
+    });
+
+    await this.mail.sendPasswordResetEmail(user, rawToken);
+    return generic;
+  }
+
+  // =====================================================
+  // RESTABLECER CONTRASEÑA (con token del correo)
+  // =====================================================
+  async resetPassword(rawToken: string, newPassword: string) {
+    const stored = await this.prisma.passwordResetToken.findUnique({
+      where: { tokenHash: this.hashToken(rawToken) },
+    });
+
+    if (!stored || stored.usedAt || stored.expiresAt < new Date()) {
+      throw new BadRequestException('Enlace inválido o expirado');
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+
+    // Transacción: nueva contraseña + token usado + cerrar TODAS las sesiones
+    await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { id: stored.userId },
+        data: { passwordHash },
+      }),
+      this.prisma.passwordResetToken.update({
+        where: { id: stored.id },
+        data: { usedAt: new Date() },
+      }),
+      this.prisma.refreshToken.updateMany({
+        where: { userId: stored.userId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      }),
+    ]);
+
+    return {
+      message: 'Contraseña actualizada. Inicia sesión con tu nueva contraseña',
+    };
+  }
+
+  // =====================================================
   // HELPERS PRIVADOS
   // =====================================================
 

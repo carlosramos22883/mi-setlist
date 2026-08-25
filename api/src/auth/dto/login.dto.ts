@@ -3,11 +3,11 @@ import { IsEmail, IsNotEmpty, IsString } from 'class-validator';
 
 export class LoginDto {
   @ApiProperty({ example: 'carlos@test.com' })
-  @IsEmail()
+  @IsEmail({}, { message: 'Debes ingresar un correo válido' })
   email!: string;
 
   @ApiProperty({ example: 'Password123!' })
   @IsString()
-  @IsNotEmpty() // no ponemos MinLength: si está mal, el login fallará con 401 igual
+  @IsNotEmpty({ message: 'La contraseña es obligatoria' })
   password!: string;
 }

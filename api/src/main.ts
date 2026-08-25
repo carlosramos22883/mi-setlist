@@ -1,7 +1,7 @@
 // main.ts = punto de entrada de la app
 import 'dotenv/config'; // Prisma 7: garantiza que .env esté cargado antes que nada
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { BadRequestException, ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 
@@ -17,9 +17,23 @@ async function bootstrap() {
   // ValidationPipe = validación automática de DTOs (el "FormRequest" de Nest)
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: true, // elimina campos no declarados en el DTO
-      forbidNonWhitelisted: true, // y además da error si llegan campos extra
-      transform: true, // convierte el JSON a instancias tipadas
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+      // Convertimos los errores de class-validator a un mapa campo → mensaje,
+      // para que el móvil pueda pintar cada mensaje BAJO su campo.
+      exceptionFactory: (errors) => {
+        const fields: Record<string, string> = {};
+        for (const err of errors) {
+          if (err.constraints) {
+            fields[err.property] = Object.values(err.constraints)[0];
+          }
+        }
+        return new BadRequestException({
+          message: 'Revisa los campos marcados',
+          fields,
+        });
+      },
     }),
   );
 

@@ -8,6 +8,8 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshDto } from './dto/refresh.dto';
 import { LogoutDto } from './dto/logout.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 
 @ApiTags('auth')
 @Controller('auth') // → /api/v1/auth
@@ -52,5 +54,17 @@ export class AuthController {
   @Post('logout')
   logout(@CurrentUser() user: JwtPayload, @Body() dto: LogoutDto) {
     return this.auth.logout(user.sub, dto.refreshToken);
+  }
+
+  // POST /api/v1/auth/forgot-password — público
+  @Post('forgot-password')
+  forgotPassword(@Body() dto: ForgotPasswordDto) {
+    return this.auth.forgotPassword(dto.email);
+  }
+
+  // POST /api/v1/auth/reset-password — público (el token es la llave)
+  @Post('reset-password')
+  resetPassword(@Body() dto: ResetPasswordDto) {
+    return this.auth.resetPassword(dto.token, dto.password);
   }
 }

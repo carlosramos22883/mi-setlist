@@ -21,6 +21,7 @@ model User {
   // Relaciones nuevas: un usuario puede tener muchos tokens
   refreshTokens       RefreshToken[]
   verificationTokens  EmailVerificationToken[]
+  passwordResetTokens PasswordResetToken[]
 
   @@map("users")
 }
@@ -57,4 +58,20 @@ model EmailVerificationToken {
   createdAt DateTime  @default(now())
 
   @@map("email_verification_tokens")
+}
+
+// -----------------------------------------------
+// TOKENS DE RECUPERACIÓN DE CONTRASEÑA
+// -----------------------------------------------
+// Igual que los de verificación: hash en BD, 1 hora de vida, un solo uso.
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  tokenHash String    @unique
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@map("password_reset_tokens")
 }
