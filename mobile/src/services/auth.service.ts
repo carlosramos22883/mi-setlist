@@ -51,3 +51,15 @@ export async function logout(refreshToken?: string | null) {
   const { data } = await api.post('/auth/logout', refreshToken ? { refreshToken } : {});
   return data;
 }
+
+// POST /auth/forgot-password — devuelve siempre el mismo mensaje genérico
+export async function forgotPassword(email: string) {
+  const { data } = await api.post<{ message: string }>('/auth/forgot-password', { email });
+  return data;
+}
+
+// POST /auth/reset-password — usa el token del correo
+export async function resetPassword(token: string, password: string) {
+  const { data } = await api.post<{ message: string }>('/auth/reset-password', { token, password });
+  return data;
+}
