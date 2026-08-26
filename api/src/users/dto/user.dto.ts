@@ -5,7 +5,7 @@
 // Reutilizamos PASSWORD_RULES del DTO de registro para que
 // la política sea consistente en toda la app.
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
   IsArray,
   IsEmail,
@@ -127,7 +127,7 @@ export class QueryUsersDto {
     description: 'Incluir usuarios eliminados',
   })
   @IsOptional()
-  @Type(() => Boolean)
+  @Transform(({ value }) => value === true || value === 'true')
   @IsBoolean()
   includeDeleted?: boolean;
 }
