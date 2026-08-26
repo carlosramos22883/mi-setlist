@@ -85,6 +85,13 @@ export class AuthService {
       where: { email: dto.email },
     });
 
+    // 🆕 Cuenta desactivada (soft delete) → no puede iniciar sesión
+    if (user?.deletedAt) {
+      throw new UnauthorizedException(
+        'Cuenta desactivada. Contacta al administrador.',
+      );
+    }
+
     // Mensaje genérico a propósito: no decimos "el correo no existe"
     // vs "contraseña mala" (evita que adivinen cuentas registradas)
     if (!user || !user.passwordHash) {

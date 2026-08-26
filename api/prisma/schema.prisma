@@ -17,12 +17,13 @@ model User {
   emailVerifiedAt DateTime?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime? // 🆕 soft delete: null = activo, fecha = eliminado lógica
 
   // Relaciones nuevas: un usuario puede tener muchos tokens
   refreshTokens       RefreshToken[]
   verificationTokens  EmailVerificationToken[]
   passwordResetTokens PasswordResetToken[]
-  roles UserRole[]
+  roles               UserRole[]
 
   @@map("users")
 }
@@ -34,11 +35,11 @@ model User {
 // si alguien roba la base de datos, no podrá usarlos.
 model RefreshToken {
   id        String    @id @default(uuid())
-  tokenHash String    @unique          // sha256 del token real
-  userId    String                     // de quién es
+  tokenHash String    @unique // sha256 del token real
+  userId    String // de quién es
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  expiresAt DateTime                   // cuándo muere
-  revokedAt DateTime?                  // si se revocó (logout/rotación), cuándo fue
+  expiresAt DateTime // cuándo muere
+  revokedAt DateTime? // si se revocó (logout/rotación), cuándo fue
   createdAt DateTime  @default(now())
 
   @@map("refresh_tokens")
@@ -55,7 +56,7 @@ model EmailVerificationToken {
   userId    String
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   expiresAt DateTime
-  usedAt    DateTime?                  // null = aún no se usó
+  usedAt    DateTime? // null = aún no se usó
   createdAt DateTime  @default(now())
 
   @@map("email_verification_tokens")
@@ -82,7 +83,7 @@ model PasswordResetToken {
 // -----------------------------------------------
 model Role {
   id          String   @id @default(uuid())
-  name        String   @unique          // "Administrador", "Usuario"
+  name        String   @unique // "Administrador", "Usuario"
   description String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -95,8 +96,8 @@ model Role {
 
 model Permission {
   id          String   @id @default(uuid())
-  name        String   @unique          // "users.create", "roles.edit"...
-  group       String                    // "users", "roles" (para agrupar en la UI)
+  name        String   @unique // "users.create", "roles.edit"...
+  group       String // "users", "roles" (para agrupar en la UI)
   description String?
   createdAt   DateTime @default(now())
 
@@ -109,8 +110,8 @@ model Permission {
 model UserRole {
   roleId    String
   userId    String
-  role      Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
 
   @@id([userId, roleId])

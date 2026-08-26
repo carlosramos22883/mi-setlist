@@ -13,6 +13,7 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
+  IsBoolean,
   IsStrongPassword,
   Max,
   Min,
@@ -120,4 +121,13 @@ export class QueryUsersDto {
   @Min(1)
   @Max(50)
   limit?: number;
+
+  @ApiPropertyOptional({
+    example: false,
+    description: 'Incluir usuarios eliminados',
+  })
+  @IsOptional()
+  @Type(() => Boolean)
+  @IsBoolean()
+  includeDeleted?: boolean;
 }

@@ -24,6 +24,7 @@ const USER_SELECT = {
   name: true,
   email: true,
   emailVerifiedAt: true,
+  deletedAt: true,
   createdAt: true,
   updatedAt: true,
   roles: { include: { role: { select: { id: true, name: true } } } },
@@ -37,21 +38,28 @@ export class UsersService {
   ) {}
 
   // ---------------------------------------------------------
-  // GET /users — listado con búsqueda y paginación
+  // GET /users — listado con búsqueda, paginación y soft delete
   // ---------------------------------------------------------
   async list(query: QueryUsersDto) {
     const page = query.page ?? 1;
     const limit = query.limit ?? 10;
 
-    // Filtro de búsqueda: por nombre O por email (case-insensitive)
-    const where = query.search
+    // Por defecto ocultamos los eliminados lógicamente;
+    // con ?includeDeleted=true el admin puede verlos.
+    const baseWhere = query.includeDeleted ? {} : { deletedAt: null };
+
+    // Filtro de búsqueda por nombre o email
+    const searchWhere = query.search
       ? {
           OR: [
             { name: { contains: query.search, mode: 'insensitive' as const } },
             { email: { contains: query.search, mode: 'insensitive' as const } },
           ],
         }
-      : undefined;
+      : {};
+
+    // Combinamos ambos filtros
+    const where = { ...baseWhere, ...searchWhere };
 
     const [users, total] = await Promise.all([
       this.prisma.user.findMany({
@@ -64,18 +72,9 @@ export class UsersService {
       this.prisma.user.count({ where }),
     ]);
 
-    // Aplana la relación: en vez de { role: {...} } devolvemos solo el rol
     return {
-      data: users.map((u) => ({
-        ...u,
-        roles: u.roles.map((ur) => ur.role),
-      })),
-      meta: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
-      },
+      data: users.map((u) => ({ ...u, roles: u.roles.map((ur) => ur.role) })),
+      meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
     };
   }
 
@@ -181,16 +180,51 @@ export class UsersService {
   }
 
   // ---------------------------------------------------------
-  // DELETE /users/:id — el admin elimina
+  // DELETE /users/:id — eliminación física o lógica según actividad
   // ---------------------------------------------------------
   async remove(id: string, requesterId: string) {
     if (id === requesterId) {
-      // Protegemos al admin de eliminarse a sí mismo accidentalmente
       throw new BadRequestException('No puedes eliminar tu propia cuenta');
     }
+
     const user = await this.prisma.user.findUnique({ where: { id } });
     if (!user) throw new NotFoundException('Usuario no encontrado');
+
+    // ¿El usuario "ha hecho algo" en el sistema?
+    // ⚠️ Tener roles NO cuenta: el sistema los asigna automáticamente.
+    // Por ahora no existen las tablas de dominio (grupos, canciones...),
+    // así que NADIE tiene actividad todavía y todo es borrado físico.
+    // En el Paso 5 ampliaremos esta verificación con:
+    //   groups (como owner), group_members, songs, events, setlists,
+    //   invitations, song_notes, favorite_songs
+    const hasActivity = false;
+
+    if (hasActivity) {
+      // Eliminación LÓGICA: se queda en BD marcado como desactivado
+      await this.prisma.user.update({
+        where: { id },
+        data: { deletedAt: new Date() },
+      });
+      // Y lo sacamos del sistema
+      await this.prisma.refreshToken.updateMany({
+        where: { userId: id, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+      return {
+        message:
+          'Usuario desactivado (tiene actividad en el sistema; no se puede eliminar físicamente)',
+      };
+    }
+
+    // Eliminación FÍSICA: borramos tokens y luego el usuario
+    // (los user_roles se borran solos por ON DELETE CASCADE)
+    await this.prisma.emailVerificationToken.deleteMany({
+      where: { userId: id },
+    });
+    await this.prisma.passwordResetToken.deleteMany({ where: { userId: id } });
+    await this.prisma.refreshToken.deleteMany({ where: { userId: id } });
     await this.prisma.user.delete({ where: { id } });
+
     return { message: 'Usuario eliminado' };
   }
 
