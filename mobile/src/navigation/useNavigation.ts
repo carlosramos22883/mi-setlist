@@ -14,15 +14,18 @@ export type ScreenName =
   | 'home'          // usuario logueado
   | 'profile'       // perfil del usuario 
   | 'usersAdmin'    // crud de usuarios
-  | 'rolesAdmin';   // crud de roles 
+  | 'rolesAdmin'   // crud de roles 
+  | 'groups'        // crud de grupos
+  | 'createGroup'   // crear grupo
+  | 'groupDetail';  // detalle de grupo
 
 export function useNavigation(initial: ScreenName = 'auth') {
   const [screen, setScreen] = useState<ScreenName>(initial);
   const [params, setParams] = useState<Record<string, string>>({});
 
-  const navigate = useCallback((to: ScreenName, newParams: Record<string, string> = {}) => {
+  const navigate = useCallback((to: ScreenName, p?: Record<string, any>) => {
     setScreen(to);
-    setParams(newParams);
+    setParams(p ?? {});
   }, []);
 
   return { screen, params, navigate };

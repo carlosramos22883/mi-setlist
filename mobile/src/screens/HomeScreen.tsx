@@ -64,6 +64,14 @@ export default function HomeScreen({ onNavigate }: Props) {
           </>
         )}
 
+        <Text style={styles.section}>Música</Text>
+        <TouchableOpacity
+          style={[globalStyles.button, styles.music]}
+          onPress={() => onNavigate('groups' as any)}
+        >
+          <Text style={globalStyles.buttonText}>🎵 Mis grupos</Text>
+        </TouchableOpacity>
+
         <TouchableOpacity style={[globalStyles.buttonDanger, styles.logout]} onPress={logout}>
           <Text style={globalStyles.buttonText}>Cerrar sesión</Text>
         </TouchableOpacity>
@@ -85,4 +93,5 @@ const styles = StyleSheet.create({
   },
   admin: { backgroundColor: c.accent }, // azul para diferenciar acciones admin
   logout: { marginTop: 24 },
+  music: { backgroundColor: c.accent },
 });

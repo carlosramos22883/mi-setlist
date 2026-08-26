@@ -9,6 +9,7 @@ export interface AdminUser {
   name: string;
   email: string;
   emailVerifiedAt: string | null;
+  deletedAt: string | null;
   createdAt: string;
   roles: { id: string; name: string }[];
 }
@@ -19,7 +20,7 @@ export interface UsersPage {
 }
 
 // GET /users?search=&page=&limit=
-export async function listUsers(params: { search?: string; page?: number; limit?: number }) {
+export async function listUsers(params: { search?: string; page?: number; limit?: number; includeDeleted?: boolean; }) {
   const { data } = await api.get<UsersPage>('/users', { params });
   return data;
 }

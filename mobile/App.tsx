@@ -15,10 +15,13 @@ import { useNavigation, type ScreenName } from './src/navigation/useNavigation';
 import { colors } from './src/constants/theme';
 import UsersAdminScreen from './src/screens/UsersAdminScreen';
 import RolesAdminScreen from './src/screens/RolesAdminScreen';
+import GroupsScreen from './src/screens/GroupsScreen';
+import CreateGroupScreen from './src/screens/CreateGroupScreen';
+import GroupDetailScreen from './src/screens/GroupDetailScreen';
 
 function Root() {
   const { user, loading } = useAuth();
-  const { screen, navigate } = useNavigation('auth');
+  const { screen, params, navigate } = useNavigation('auth');
   const [hasResetToken, setHasResetToken] = useState(false);
 
   // (el useEffect que detecta ?token= queda IGUAL que antes)
@@ -39,7 +42,27 @@ function Root() {
       case 'usersAdmin':
         return <UsersAdminScreen onBack={() => navigate('home')} />;
       case 'rolesAdmin':
-        return <RolesAdminScreen onBack={() => navigate('home')} />;     
+        return <RolesAdminScreen onBack={() => navigate('home')} />;   
+      case 'groups':
+        return (
+          <GroupsScreen
+            onNavigate={(to, p) => navigate(to as any, p)}
+          />
+        );
+      case 'createGroup':
+        return (
+          <CreateGroupScreen
+            onBack={() => navigate('groups')}
+            onCreated={() => navigate('groups')}
+          />
+        );
+      case 'groupDetail':
+        return (
+          <GroupDetailScreen
+            groupId={params.groupId}
+            onBack={() => navigate('groups')}
+          />
+        );  
       default:
         return <HomeScreen onNavigate={navigate} />;
     }

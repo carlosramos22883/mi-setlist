@@ -34,6 +34,8 @@ export default function UsersAdminScreen({ onBack }: Props) {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
+  const [includeDeleted, setIncludeDeleted] = useState(false);
+
   // Modal state
   const [modalVisible, setModalVisible] = useState(false);
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
@@ -62,6 +64,7 @@ export default function UsersAdminScreen({ onBack }: Props) {
         search: search.trim() || undefined,
         page,
         limit: 10,
+        includeDeleted,
       });
       setUsers(res.data);
       setTotalPages(res.meta.totalPages);
@@ -71,7 +74,7 @@ export default function UsersAdminScreen({ onBack }: Props) {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [search, page]);
+  }, [search, page, includeDeleted]);
 
   useEffect(() => {
     loadUsers();
@@ -129,7 +132,7 @@ export default function UsersAdminScreen({ onBack }: Props) {
   function handleDelete(user: AdminUser) {
     confirmAction(
       'Eliminar usuario',
-      `¿Seguro que quieres eliminar a "${user.name}"? Esta acción no se puede deshacer.`,
+      `¿Eliminar a "${user.name}"? Si tiene actividad en el sistema se desactivará; si no, se eliminará definitivamente.`,
       async () => {
         try {
           await UsersService.deleteUser(user.id);
@@ -144,9 +147,10 @@ export default function UsersAdminScreen({ onBack }: Props) {
 
   // Render de cada fila de usuario
   function renderItem({ item }: { item: AdminUser }) {
+    const isDeleted = item.deletedAt !== null;
     const isMe = item.id === currentUser?.id;
     return (
-      <View style={styles.row}>
+      <View style={[styles.row, isDeleted && styles.rowDeleted]}>
         <View style={styles.userInfo}>
           <Text style={styles.userName}>
             {item.name} {isMe && <Text style={styles.meTag}>(tú)</Text>}
@@ -164,6 +168,7 @@ export default function UsersAdminScreen({ onBack }: Props) {
               <Text style={styles.unverified}>⏳</Text>
             )}
           </View>
+          {isDeleted && <Text style={styles.deletedBadge}>ELIMINADO</Text>}
         </View>
 
         <View style={styles.actions}>
@@ -204,6 +209,15 @@ export default function UsersAdminScreen({ onBack }: Props) {
             value={search}
             onChangeText={handleSearch}
           />
+          <TouchableOpacity
+            style={styles.checkboxWrap}
+            onPress={() => setIncludeDeleted((v) => !v)}
+            >
+            <View style={[styles.checkbox, includeDeleted && styles.checkboxOn]}>
+                {includeDeleted && <Text style={styles.checkmark}>✓</Text>}
+            </View>
+            <Text style={styles.checkboxLabel}>Ver eliminados</Text>
+          </TouchableOpacity>
           {can('users.create') && (
             <TouchableOpacity style={globalStyles.button} onPress={openCreate}>
               <Text style={globalStyles.buttonText}>+ Nuevo</Text>
@@ -314,4 +328,29 @@ const styles = StyleSheet.create({
   },
   pageBtn: { flex: 1 },
   pageInfo: { color: c.textSecondary, fontSize: 13 },
+  rowDeleted: { opacity: 0.5, backgroundColor: 'rgba(220, 53, 69, 0.1)' },
+  deletedBadge: {
+    backgroundColor: colors.status.danger,
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '700',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginLeft: 8,
+  },
+  checkboxWrap: { flexDirection: 'row', alignItems: 'center', gap: 6, marginRight: 4 },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: c.border,
+    backgroundColor: c.surface2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkboxOn: { backgroundColor: c.primary, borderColor: c.primary },
+  checkmark: { color: '#FFFFFF', fontSize: 13, fontWeight: '700' },
+  checkboxLabel: { color: c.textSecondary, fontSize: 12, fontWeight: '600' },  
 });
