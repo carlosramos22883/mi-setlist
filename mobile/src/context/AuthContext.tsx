@@ -15,6 +15,8 @@ interface AuthContextValue {
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  can: (permission: string) => boolean;
+  reloadUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -81,8 +83,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }
 
+  // ¿El usuario actual tiene este permiso? (para mostrar/ocultar UI)
+  function can(permission: string): boolean {
+    return user?.permissions?.includes(permission) ?? false;
+  }
+
+  // Vuelve a pedir /auth/me (tras editar el perfil, por ejemplo)
+  async function reloadUser() {
+    setUser(await AuthService.me());
+  }
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, can, reloadUser }}>
       {children}
     </AuthContext.Provider>
   );

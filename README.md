@@ -101,11 +101,12 @@ Una vez que los contenedores estén corriendo, puedes acceder a:
 
 ## Credenciales de Prueba
 
-| Usuario | Rol | Password |
+| Correo | Contraseña | Rol |
 |---|---|---|
-| demo@misetlist.app | User | Demo123! |
+| admin@misetlist.app | Admin123! | Administrador |
+| demo@misetlist.app | Demo123! | Usuario |
 
-> Las credenciales de administrador y usuarios de prueba se generan automáticamente con el seeder de Prisma.
+> Se generan automáticamente con `npx prisma db seed`.
 
 ## Características Principales
 

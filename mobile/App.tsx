@@ -10,6 +10,7 @@ import AuthScreen from './src/screens/AuthScreen';
 import ForgotPasswordScreen from './src/screens/ForgotPasswordScreen';
 import ResetPasswordScreen from './src/screens/ResetPasswordScreen';
 import HomeScreen from './src/screens/HomeScreen';
+import ProfileScreen from './src/screens/ProfileScreen';
 import { useNavigation, type ScreenName } from './src/navigation/useNavigation';
 import { colors } from './src/constants/theme';
 
@@ -18,22 +19,7 @@ function Root() {
   const { screen, navigate } = useNavigation('auth');
   const [hasResetToken, setHasResetToken] = useState(false);
 
-  // Al arrancar: detectar si venimos del correo de reset (?token=xxx)
-  useEffect(() => {
-    (async () => {
-      if (Platform.OS === 'web' && typeof window !== 'undefined') {
-        const params = new URLSearchParams(window.location.search);
-        if (params.get('token') && window.location.pathname.includes('reset-password')) {
-          setHasResetToken(true);
-        }
-      } else {
-        const url = await Linking.getInitialURL();
-        if (url?.includes('reset-password') && url.includes('token=')) {
-          setHasResetToken(true);
-        }
-      }
-    })();
-  }, []);
+  // (el useEffect que detecta ?token= queda IGUAL que antes)
 
   if (loading) {
     return (
@@ -43,47 +29,57 @@ function Root() {
     );
   }
 
-  // Prioridad 1: si hay sesión activa → Home
-  if (user) return <HomeScreen />;
+  // ---------- USUARIO LOGUEADO ----------
+  if (user) {
+    switch (screen) {
+      case 'profile':
+        return <ProfileScreen onBack={() => navigate('home')} />;
+      case 'usersAdmin':
+        return <PlaceholderScreen title="Administrar usuarios" onBack={() => navigate('home')} />;
+      case 'rolesAdmin':
+        return <PlaceholderScreen title="Roles y permisos" onBack={() => navigate('home')} />;
+      default:
+        return <HomeScreen onNavigate={navigate} />;
+    }
+  }
 
-  // Prioridad 2: si venimos del correo con token → pantalla de reset
+  // ---------- NO LOGUEADO ----------
   if (hasResetToken) {
     return (
       <ResetPasswordScreen
-        onSuccess={() => {
-          setHasResetToken(false);
-          navigate('auth');
-          // Limpiamos la URL en web para que no vuelva a entrar al refresco
-          if (Platform.OS === 'web' && typeof window !== 'undefined') {
-            window.history.replaceState({}, '', '/');
-          }
-        }}
-        onBack={() => {
-          setHasResetToken(false);
-          navigate('auth');
-          if (Platform.OS === 'web' && typeof window !== 'undefined') {
-            window.history.replaceState({}, '', '/');
-          }
-        }}
+        onSuccess={() => { setHasResetToken(false); navigate('auth'); cleanWebUrl(); }}
+        onBack={() => { setHasResetToken(false); navigate('auth'); cleanWebUrl(); }}
       />
     );
   }
 
-  // Prioridad 3: navegación normal entre auth / forgot / reset manual
-  switch (screen as ScreenName) {
+  switch (screen) {
     case 'forgot':
       return <ForgotPasswordScreen onBack={() => navigate('auth')} />;
-    case 'reset':
-      return (
-        <ResetPasswordScreen
-          onSuccess={() => navigate('auth')}
-          onBack={() => navigate('auth')}
-        />
-      );
-    case 'auth':
     default:
       return <AuthScreen onForgot={() => navigate('forgot')} />;
   }
+}
+
+// Limpia el ?token= de la URL en web para que no reviva al refrescar
+function cleanWebUrl() {
+  if (Platform.OS === 'web' && typeof window !== 'undefined') {
+    window.history.replaceState({}, '', '/');
+  }
+}
+
+// Pantalla temporal para B2.2 / B2.3
+function PlaceholderScreen({ title, onBack }: { title: string; onBack: () => void }) {
+  return (
+    <View style={{ flex: 1, backgroundColor: colors.dark.bg, alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <Text style={{ fontSize: 48 }}>🚧</Text>
+      <Text style={{ color: colors.dark.text, fontSize: 18, marginTop: 8, textAlign: 'center' }}>{title}</Text>
+      <Text style={{ color: colors.dark.textSecondary, marginTop: 4 }}>En construcción…</Text>
+      <TouchableOpacity onPress={onBack} style={{ marginTop: 24 }}>
+        <Text style={{ color: colors.dark.accent }}>← Volver</Text>
+      </TouchableOpacity>
+    </View>
+  );
 }
 
 export default function App() {

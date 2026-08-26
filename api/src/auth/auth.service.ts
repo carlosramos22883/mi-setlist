@@ -73,7 +73,7 @@ export class AuthService {
     // 6) Emitir tokens para que quede logueado de una vez
     const tokens = await this.issueTokens(user.id);
 
-    return { user: this.publicUser(user), ...tokens };
+    return { user: await this.enrichedUser(user.id), ...tokens };
   }
 
   // =====================================================
@@ -97,7 +97,8 @@ export class AuthService {
 
     // 3) Emitir tokens
     const tokens = await this.issueTokens(user.id);
-    return { user: this.publicUser(user), ...tokens };
+    // 🆒 ahora el usuario llega CON roles y permisos (sin recargar)
+    return { user: await this.enrichedUser(user.id), ...tokens };
   }
 
   // =====================================================
@@ -158,37 +159,7 @@ export class AuthService {
   // PERFIL DEL USUARIO AUTENTICADO (con roles y permisos)
   // =====================================================
   async me(userId: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      include: {
-        roles: {
-          include: {
-            role: {
-              include: {
-                permissions: { include: { permission: true } },
-              },
-            },
-          },
-        },
-      },
-    });
-    if (!user) throw new NotFoundException('Usuario no encontrado');
-
-    // Lista simple de nombres de roles
-    const roles = user.roles.map((ur) => ur.role.name);
-
-    // Lista única de nombres de permisos (Set elimina duplicados)
-    const permissions = [
-      ...new Set(
-        user.roles.flatMap((ur) =>
-          ur.role.permissions.map((rp) => rp.permission.name),
-        ),
-      ),
-    ];
-
-    // El móvil usará `permissions` para mostrar/ocultar secciones
-    // (equivalente a @can en Blade de Laravel)
-    return { ...this.publicUser(user), roles, permissions };
+    return this.enrichedUser(userId);
   }
 
   // =====================================================
@@ -328,5 +299,38 @@ export class AuthService {
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     };
+  }
+
+  // =====================================================
+  // HELPER: usuario público + roles + permisos
+  // =====================================================
+  // Única fuente de verdad del "usuario enriquecido".
+  // Lo usan me(), login() y register() para que TODOS
+  // devuelvan la misma forma de datos.
+  private async enrichedUser(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        roles: {
+          include: {
+            role: {
+              include: { permissions: { include: { permission: true } } },
+            },
+          },
+        },
+      },
+    });
+    if (!user) throw new NotFoundException('Usuario no encontrado');
+
+    const roles = user.roles.map((ur) => ur.role.name);
+    const permissions = [
+      ...new Set(
+        user.roles.flatMap((ur) =>
+          ur.role.permissions.map((rp) => rp.permission.name),
+        ),
+      ),
+    ];
+
+    return { ...this.publicUser(user), roles, permissions };
   }
 }

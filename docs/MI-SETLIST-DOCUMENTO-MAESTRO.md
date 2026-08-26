@@ -699,5 +699,49 @@ Regla: antes de crear un proyecto nuevo, revisar esta tabla y elegir puertos lib
 - [x] Auth móvil/web conectada a la API (login, registro, sesión persistente, logout).
 - [x] Correo de verificación con plantilla de marca.
 - [x] Estilos centralizados (global.ts) y tokens compartidos.
+
+## RBAC — CONTROL DE ACCESO POR ROLES (Bloque B1 ✅)
+
+### Modelo de datos (estilo Spatie/Laravel)
+- `users ↔ roles` (muchos a muchos vía `user_roles`)
+- `roles ↔ permissions` (muchos a muchos vía `role_permissions`)
+
+### Roles por defecto (seeder: `npx prisma db seed`)
+| Rol | Permisos | Reglas |
+|---|---|---|
+| **Administrador** | TODOS | Nunca puede perder permisos (regla en `RolesService`) |
+| **Usuario** | `profile.view`, `profile.edit` | Nunca puede quedar vacío (todo rol ≥ 1 permiso) |
+
+### Catálogo de permisos
+- `users.view / create / edit / delete`
+- `roles.view / edit`
+- `profile.view / edit`
+
+### Protección de rutas
+- `@Permissions('recurso.accion')` + `PermissionsGuard` (corre después de `JwtAuthGuard`).
+- El payload del JWT viaja con `sub`; los permisos se resuelven en BD: user → roles → permissions.
+
+### Reglas de negocio implementadas
+- Registro público y creación por admin asignan rol **Usuario** automáticamente (el usuario no elige rol).
+- Toda cuenta (pública o creada por admin) requiere verificación de correo.
+- Cambio de correo → `emailVerifiedAt = null` + nuevo token + correo + revocación de sesiones (logout forzado).
+- Admin no puede eliminarse a sí mismo.
+- Usuarios sin rol reciben "Usuario" vía seeder.
+
+### Credenciales de desarrollo
+| Correo | Contraseña | Rol |
+|---|---|---|
+| admin@misetlist.app | Admin123! | Administrador |
+| demo@misetlist.app | Demo123! | Usuario |
+
+### Endpoints del Bloque B1
+- `POST /auth/forgot-password` · `POST /auth/reset-password`
+- `PATCH /users/me` (requiere `profile.edit`)
+- `GET/POST /users` · `PATCH/DELETE /users/:id` (permisos `users.*`)
+- `GET /roles` · `GET /permissions` · `PATCH /roles/:id` (permisos `roles.*`)
+
+### PENDIENTES
+- [ ] B2: Panel de administración en el móvil (CRUD usuarios + gestión de roles/permisos con UI).
+- [ ] Paso 5: Grupos musicales (Owner/Admin/Member).
   
 **FIN DEL DOCUMENTO**  

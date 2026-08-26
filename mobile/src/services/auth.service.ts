@@ -11,6 +11,8 @@ export interface AuthUser {
   emailVerifiedAt: string | null;
   createdAt: string;
   updatedAt: string;
+  roles: string[];
+  permissions: string[];
 }
 
 export interface AuthResponse {

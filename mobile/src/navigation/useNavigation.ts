@@ -11,7 +11,10 @@ export type ScreenName =
   | 'auth'           // login / registro
   | 'forgot'         // pedir reset de contraseña
   | 'reset'          // nueva contraseña (con token)
-  | 'home';          // usuario logueado
+  | 'home'          // usuario logueado
+  | 'profile'       // perfil del usuario 
+  | 'usersAdmin'    // crud de usuarios
+  | 'rolesAdmin';   // crud de roles 
 
 export function useNavigation(initial: ScreenName = 'auth') {
   const [screen, setScreen] = useState<ScreenName>(initial);

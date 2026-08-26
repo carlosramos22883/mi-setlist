@@ -103,7 +103,7 @@ export default function AuthScreen({ onForgot }: Props) {
                 value={name}
                 onChangeText={(t) => { setName(t); setErrors((e) => ({ ...e, name: '' })); }}
               />
-              {errors.name && <Text style={styles.error}>{errors.name}</Text>}
+              {errors.name !== '' && <Text style={styles.error}>{errors.name}</Text>}
             </View>
           )}
 
@@ -117,7 +117,7 @@ export default function AuthScreen({ onForgot }: Props) {
               value={email}
               onChangeText={(t) => { setEmail(t); setErrors((e) => ({ ...e, email: '' })); }}
             />
-            {errors.email && <Text style={styles.error}>{errors.email}</Text>}
+            {errors.email !== '' && <Text style={styles.error}>{errors.email}</Text>}
           </View>
 
           <View style={styles.field}>
