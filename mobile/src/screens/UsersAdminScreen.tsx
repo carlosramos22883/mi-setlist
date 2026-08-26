@@ -6,9 +6,10 @@
 // tiene el permiso correspondiente (can('users.create'), etc.).
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator, Alert, FlatList, RefreshControl, ScrollView,
+  ActivityIndicator, FlatList, RefreshControl, ScrollView,
   StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
+import { confirmAction, showAlert } from '../utils/dialogs';
 import { useAuth } from '../context/AuthContext';
 import * as UsersService from '../services/users.service';
 import type { AdminUser } from '../services/users.service';
@@ -65,7 +66,7 @@ export default function UsersAdminScreen({ onBack }: Props) {
       setUsers(res.data);
       setTotalPages(res.meta.totalPages);
     } catch {
-      Alert.alert('Error', 'No se pudieron cargar los usuarios');
+        showAlert('Error', 'No se pudieron cargar los usuarios');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -124,37 +125,21 @@ export default function UsersAdminScreen({ onBack }: Props) {
     await loadUsers();
   }
 
-  // Eliminar con confirmación
+  // Eliminar con confirmación  
   function handleDelete(user: AdminUser) {
-    const confirmMessage = `¿Seguro que quieres eliminar a "${user.name}"? Esta acción no se puede deshacer.`;
-
-    const performDelete = async () => {
+    confirmAction(
+      'Eliminar usuario',
+      `¿Seguro que quieres eliminar a "${user.name}"? Esta acción no se puede deshacer.`,
+      async () => {
         try {
-        await UsersService.deleteUser(user.id);
-        await loadUsers();
+          await UsersService.deleteUser(user.id);
+          await loadUsers();
         } catch (e: any) {
-        Alert.alert('Error', e?.response?.data?.message ?? 'No se pudo eliminar');
+          showAlert('Error', e?.response?.data?.message ?? 'No se pudo eliminar');
         }
-    };
-
-    // Si estamos en la web, usar window.confirm nativo
-    if (typeof window !== 'undefined' && window.confirm) {
-        if (window.confirm(confirmMessage)) {
-        performDelete();
-        }
-        return;
-    }
-
-    // Si es móvil nativo (iOS / Android)
-    Alert.alert(
-        'Eliminar usuario',
-        confirmMessage,
-        [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Eliminar', style: 'destructive', onPress: performDelete },
-        ],
+      },
     );
-}
+  }
 
 
   // Render de cada fila de usuario

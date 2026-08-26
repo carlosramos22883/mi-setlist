@@ -14,6 +14,7 @@ import ProfileScreen from './src/screens/ProfileScreen';
 import { useNavigation, type ScreenName } from './src/navigation/useNavigation';
 import { colors } from './src/constants/theme';
 import UsersAdminScreen from './src/screens/UsersAdminScreen';
+import RolesAdminScreen from './src/screens/RolesAdminScreen';
 
 function Root() {
   const { user, loading } = useAuth();
@@ -38,7 +39,7 @@ function Root() {
       case 'usersAdmin':
         return <UsersAdminScreen onBack={() => navigate('home')} />;
       case 'rolesAdmin':
-        return <PlaceholderScreen title="Roles y permisos" onBack={() => navigate('home')} />;      
+        return <RolesAdminScreen onBack={() => navigate('home')} />;     
       default:
         return <HomeScreen onNavigate={navigate} />;
     }
@@ -67,20 +68,6 @@ function cleanWebUrl() {
   if (Platform.OS === 'web' && typeof window !== 'undefined') {
     window.history.replaceState({}, '', '/');
   }
-}
-
-// Pantalla temporal para B2.2 / B2.3
-function PlaceholderScreen({ title, onBack }: { title: string; onBack: () => void }) {
-  return (
-    <View style={{ flex: 1, backgroundColor: colors.dark.bg, alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-      <Text style={{ fontSize: 48 }}>🚧</Text>
-      <Text style={{ color: colors.dark.text, fontSize: 18, marginTop: 8, textAlign: 'center' }}>{title}</Text>
-      <Text style={{ color: colors.dark.textSecondary, marginTop: 4 }}>En construcción…</Text>
-      <TouchableOpacity onPress={onBack} style={{ marginTop: 24 }}>
-        <Text style={{ color: colors.dark.accent }}>← Volver</Text>
-      </TouchableOpacity>
-    </View>
-  );
 }
 
 export default function App() {

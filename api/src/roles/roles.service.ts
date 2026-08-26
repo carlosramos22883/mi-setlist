@@ -5,9 +5,10 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
+  ConflictException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { UpdateRoleDto } from './dto/update-role.dto';
+import { CreateRoleDto, UpdateRoleDto } from './dto/role.dto';
 
 @Injectable()
 export class RolesService {
@@ -54,6 +55,41 @@ export class RolesService {
       groups[p.group].push(p);
     }
     return groups;
+  }
+
+  // ---------------------------------------------------------
+  // POST /roles — crear un rol nuevo
+  // ---------------------------------------------------------
+  async create(dto: CreateRoleDto) {
+    // Regla de negocio: todo rol nace con al menos un permiso
+    if (!dto.permissionIds || dto.permissionIds.length === 0) {
+      throw new BadRequestException('Un rol debe tener al menos un permiso');
+    }
+
+    const exists = await this.prisma.role.findUnique({
+      where: { name: dto.name },
+    });
+    if (exists) throw new ConflictException('Ese rol ya existe');
+
+    const role = await this.prisma.role.create({
+      data: { name: dto.name, description: dto.description },
+    });
+
+    await this.prisma.rolePermission.createMany({
+      data: dto.permissionIds.map((permissionId) => ({
+        roleId: role.id,
+        permissionId,
+      })),
+      skipDuplicates: true,
+    });
+
+    return this.prisma.role.findUnique({
+      where: { id: role.id },
+      include: {
+        permissions: { include: { permission: true } },
+        _count: { select: { users: true } },
+      },
+    });
   }
 
   // ---------------------------------------------------------
@@ -119,5 +155,38 @@ export class RolesService {
       usersCount: updated!._count.users,
       permissions: updated!.permissions.map((rp) => rp.permission),
     };
+  }
+
+  // ---------------------------------------------------------
+  // DELETE /roles/:id — eliminar rol (solo si no tiene usuarios)
+  // ---------------------------------------------------------
+  async remove(id: string) {
+    const role = await this.prisma.role.findUnique({
+      where: { id },
+      include: { _count: { select: { users: true } } },
+    });
+    if (!role) throw new NotFoundException('Rol no encontrado');
+
+    // Regla de seguridad: el Administrador NO se puede eliminar
+    if (role.name === 'Administrador') {
+      throw new BadRequestException(
+        'El rol Administrador no se puede eliminar',
+      );
+    }
+
+    // Regla de seguridad: no eliminar roles que tengan usuarios asignados
+    if (role._count.users > 0) {
+      throw new BadRequestException(
+        `No se puede eliminar el rol "${role.name}" porque tiene ${role._count.users} usuario(s) asignado(s). Primero reasígnalos a otro rol.`,
+      );
+    }
+
+    // Transacción: borra los permisos asociados y el rol
+    await this.prisma.$transaction([
+      this.prisma.rolePermission.deleteMany({ where: { roleId: id } }),
+      this.prisma.role.delete({ where: { id } }),
+    ]);
+
+    return { message: 'Rol eliminado' };
   }
 }

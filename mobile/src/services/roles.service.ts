@@ -30,10 +30,26 @@ export async function listPermissions() {
   return data;
 }
 
+// POST /roles — crear un rol nuevo
+export async function createRole(payload: {
+  name: string;
+  description?: string;
+  permissionIds: string[];
+}) {
+  const { data } = await api.post<Role>('/roles', payload);
+  return data;
+}
+
 // PATCH /roles/:id
 export async function updateRole(id: string, payload: {
   name?: string; description?: string; permissionIds?: string[];
 }) {
   const { data } = await api.patch<Role>(`/roles/${id}`, payload);
+  return data;
+}
+
+// DELETE /roles/:id
+export async function deleteRole(id: string) {
+  const { data } = await api.delete<{ message: string }>(`/roles/${id}`);
   return data;
 }
