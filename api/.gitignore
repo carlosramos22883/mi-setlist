@@ -6,3 +6,5 @@ node_modules
 
 # Cliente de Prisma generado (se regenera con npm run prisma:generate)
 src/generated/
+
+storage/

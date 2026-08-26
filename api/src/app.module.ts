@@ -9,6 +9,7 @@ import { PublicModule } from './public/public.module';
 import { CommonModule } from './common/common.module';
 import { UsersModule } from './users/users.module';
 import { RolesModule } from './roles/roles.module';
+import { UploadsModule } from './uploads/uploads.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { RolesModule } from './roles/roles.module';
     CommonModule,
     UsersModule,
     RolesModule,
+    UploadsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
