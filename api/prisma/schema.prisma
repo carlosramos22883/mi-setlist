@@ -17,13 +17,19 @@ model User {
   emailVerifiedAt DateTime?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
-  deletedAt       DateTime? // 🆕 soft delete: null = activo, fecha = eliminado lógica
+  deletedAt       DateTime? // soft delete: null = activo
 
-  // Relaciones nuevas: un usuario puede tener muchos tokens
+  // Tokens y RBAC
   refreshTokens       RefreshToken[]
   verificationTokens  EmailVerificationToken[]
   passwordResetTokens PasswordResetToken[]
   roles               UserRole[]
+
+  // Grupos: UNA relación por modelo, cada una con su par claro
+  ownedGroups      Group[]           @relation("GroupOwner")
+  groupMemberships GroupMember[]
+  sentInvitations  GroupInvitation[]
+  groups           Group[]
 
   @@map("users")
 }
@@ -128,4 +134,87 @@ model RolePermission {
 
   @@id([roleId, permissionId])
   @@map("role_permissions")
+}
+
+// -----------------------------------------------
+// GRUPOS MUSICALES (coros, bandas, orquestas...)
+// -----------------------------------------------
+model Group {
+  id          String    @id @default(uuid())
+  name        String
+  description String?
+  type        GroupType @default(band)
+  logoPath    String? // ruta relativa en storage ("uploads/xxx.png")
+  ownerId     String
+  owner       User      @relation("GroupOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime? // soft delete
+
+  members     GroupMember[]
+  invitations GroupInvitation[]
+  user        User?             @relation(fields: [userId], references: [id])
+  userId      String?
+
+  @@map("groups")
+}
+
+enum GroupType {
+  band // Banda
+  choir // Coro
+  orchestra // Orquesta
+  vocal_group // Grupo vocal
+  other // Otro
+}
+
+// -----------------------------------------------
+// MIEMBROS DE GRUPO (roles internos, distintos al RBAC global)
+// -----------------------------------------------
+model GroupMember {
+  id       String     @id @default(uuid())
+  groupId  String
+  userId   String
+  role     MemberRole @default(member)
+  joinedAt DateTime   @default(now())
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId]) // un usuario = una membresía por grupo
+  @@map("group_members")
+}
+
+enum MemberRole {
+  owner // Dueño del grupo (uno solo)
+  admin // Administrador del grupo
+  member // Miembro regular
+}
+
+// -----------------------------------------------
+// INVITACIONES A GRUPOS
+// -----------------------------------------------
+model GroupInvitation {
+  id          String           @id @default(uuid())
+  groupId     String
+  email       String // correo del invitado
+  token       String           @unique // para aceptar vía enlace
+  role        MemberRole       @default(member)
+  invitedById String
+  invitedBy   User             @relation(fields: [invitedById], references: [id], onDelete: Cascade)
+  status      InvitationStatus @default(pending)
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  createdAt   DateTime         @default(now())
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@index([email])
+  @@map("group_invitations")
+}
+
+enum InvitationStatus {
+  pending
+  accepted
+  declined
+  expired
 }

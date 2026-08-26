@@ -187,17 +187,21 @@ export class UsersService {
       throw new BadRequestException('No puedes eliminar tu propia cuenta');
     }
 
-    const user = await this.prisma.user.findUnique({ where: { id } });
+    const user = await this.prisma.user.findUnique({
+      where: { id },
+      include: {
+        ownedGroups: { select: { id: true } }, // ¿creó grupos?
+        groupMemberships: { select: { id: true } }, // ¿pertenece a grupos?
+        sentInvitations: { select: { id: true } }, // ¿invitó gente?
+      },
+    });
     if (!user) throw new NotFoundException('Usuario no encontrado');
 
-    // ¿El usuario "ha hecho algo" en el sistema?
-    // ⚠️ Tener roles NO cuenta: el sistema los asigna automáticamente.
-    // Por ahora no existen las tablas de dominio (grupos, canciones...),
-    // así que NADIE tiene actividad todavía y todo es borrado físico.
-    // En el Paso 5 ampliaremos esta verificación con:
-    //   groups (como owner), group_members, songs, events, setlists,
-    //   invitations, song_notes, favorite_songs
-    const hasActivity = false;
+    // Actividad REAL en el sistema (contenido que quedaría huérfano)
+    const hasActivity =
+      user.ownedGroups.length > 0 ||
+      user.groupMemberships.length > 0 ||
+      user.sentInvitations.length > 0;
 
     if (hasActivity) {
       // Eliminación LÓGICA: se queda en BD marcado como desactivado

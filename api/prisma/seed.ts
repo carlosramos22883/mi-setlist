@@ -134,6 +134,60 @@ async function main() {
     });
   }
 
+  // ----------------------------------------------------------
+  // 4) GRUPOS DE EJEMPLO
+  // ----------------------------------------------------------
+  const adminUser = await prisma.user.findUnique({
+    where: { email: 'admin@misetlist.app' },
+  });
+  const demoUser = await prisma.user.findUnique({
+    where: { email: 'demo@misetlist.app' },
+  });
+
+  if (adminUser && demoUser) {
+    // Grupo 1: banda del admin; demo es miembro
+    const rockBand = await prisma.group.upsert({
+      where: { id: '11111111-1111-1111-1111-111111111111' },
+      update: {},
+      create: {
+        id: '11111111-1111-1111-1111-111111111111',
+        name: 'Rock Band Demo',
+        description: 'Banda de rock para demostración',
+        type: 'band',
+        ownerId: adminUser.id,
+      },
+    });
+
+    await prisma.groupMember.upsert({
+      where: { groupId_userId: { groupId: rockBand.id, userId: adminUser.id } },
+      update: {},
+      create: { groupId: rockBand.id, userId: adminUser.id, role: 'owner' },
+    });
+    await prisma.groupMember.upsert({
+      where: { groupId_userId: { groupId: rockBand.id, userId: demoUser.id } },
+      update: {},
+      create: { groupId: rockBand.id, userId: demoUser.id, role: 'member' },
+    });
+
+    // Grupo 2: coro del demo
+    const choir = await prisma.group.upsert({
+      where: { id: '22222222-2222-2222-2222-222222222222' },
+      update: {},
+      create: {
+        id: '22222222-2222-2222-2222-222222222222',
+        name: 'Coro Municipal',
+        description: 'Coro de la ciudad',
+        type: 'choir',
+        ownerId: demoUser.id,
+      },
+    });
+    await prisma.groupMember.upsert({
+      where: { groupId_userId: { groupId: choir.id, userId: demoUser.id } },
+      update: {},
+      create: { groupId: choir.id, userId: demoUser.id, role: 'owner' },
+    });
+  }
+
   console.log('✅ Seed completo:');
   console.log('   admin@misetlist.app / Admin123!  (Administrador)');
   console.log('   demo@misetlist.app  / Demo123!   (Usuario)');
