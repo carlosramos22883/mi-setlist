@@ -3,7 +3,7 @@
 // ============================================================
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Platform, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Platform, StyleSheet, View, Text, TouchableOpacity } from 'react-native';
 import * as Linking from 'expo-linking';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import AuthScreen from './src/screens/AuthScreen';
@@ -13,6 +13,7 @@ import HomeScreen from './src/screens/HomeScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import { useNavigation, type ScreenName } from './src/navigation/useNavigation';
 import { colors } from './src/constants/theme';
+import UsersAdminScreen from './src/screens/UsersAdminScreen';
 
 function Root() {
   const { user, loading } = useAuth();
@@ -35,9 +36,9 @@ function Root() {
       case 'profile':
         return <ProfileScreen onBack={() => navigate('home')} />;
       case 'usersAdmin':
-        return <PlaceholderScreen title="Administrar usuarios" onBack={() => navigate('home')} />;
+        return <UsersAdminScreen onBack={() => navigate('home')} />;
       case 'rolesAdmin':
-        return <PlaceholderScreen title="Roles y permisos" onBack={() => navigate('home')} />;
+        return <PlaceholderScreen title="Roles y permisos" onBack={() => navigate('home')} />;      
       default:
         return <HomeScreen onNavigate={navigate} />;
     }
