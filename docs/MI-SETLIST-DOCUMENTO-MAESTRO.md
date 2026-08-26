@@ -1,7 +1,7 @@
 # MI SETLIST - DOCUMENTO MAESTRO  
   
-**Última actualización:** Agosto 2026 (Inicio del proyecto)  
-**Estado:** Fase 0 - Configuración inicial  
+**Última actualización:** Agosto 2026 (Bloques A y B completados)
+**Estado:** Fase 1 - Autenticación y RBAC completos
   
 ---  
   
@@ -121,10 +121,10 @@ Servir como proyecto estrella del portafolio profesional, demostrando habilidade
 ## 3. ROLES Y PERMISOS  
   
 ### 3.1 Roles del sistema  
-| Rol | Descripción |  
-|-----|-------------|  
-| **Super Admin** | Acceso total al sistema. Gestión de usuarios, configuración global. |  
-| **User** | Usuario estándar. Puede crear grupos, canciones, eventos. |  
+| Rol | Permisos | Reglas especiales |
+|-----|----------|-------------------|
+| **Administrador** | TODOS los permisos del sistema | Nunca puede perder permisos. Nunca se puede eliminar. |
+| **Usuario** | `profile.view`, `profile.edit` (perfil propio) | Todo rol debe tener ≥1 permiso. Asignado por defecto al registrarse. |
   
 ### 3.2 Roles dentro de un grupo  
 Cada grupo musical tiene sus propios roles internos:  
@@ -137,35 +137,45 @@ Cada grupo musical tiene sus propios roles internos:
 | **Invited** | Pendiente de aceptar invitación. Solo puede aceptar/rechazar. |  
   
 ### 3.3 Permisos granulares (por recurso)  
-Para cada recurso se definen permisos CRUD:  
-  
-- `groups.create`, `groups.view`, `groups.edit`, `groups.delete`  
-- `songs.create`, `songs.view`, `songs.edit`, `songs.delete`  
-- `events.create`, `events.view`, `events.edit`, `events.delete`  
-- `setlists.create`, `setlists.view`, `setlists.edit`, `setlists.delete`  
-- `members.invite`, `members.remove`, `members.change_role`  
+
+**Administración del sistema (implementados en Bloque B):**
+- `users.create`, `users.view`, `users.edit`, `users.delete`
+- `roles.create`, `roles.view`, `roles.edit`, `roles.delete`
+- `profile.view`, `profile.edit` (perfil propio)
+
+**Recursos de dominio (pendientes, Bloques C-D):**
+- `groups.create`, `groups.view`, `groups.edit`, `groups.delete`
+- `songs.create`, `songs.view`, `songs.edit`, `songs.delete`
+- `events.create`, `events.view`, `events.edit`, `events.delete`
+- `setlists.create`, `setlists.view`, `setlists.edit`, `setlists.delete`
+- `members.invite`, `members.remove`, `members.change_role`
   
 ### 3.4 Implementación técnica  
-- **Backend:** Guards personalizados de NestJS (`@Permissions('songs.create')`).  
-- **Frontend:** Hook `usePermission()` para mostrar/ocultar botones.  
-- **Verificación obligatoria:** el backend valida pertenencia al grupo en cada request.  
+- **Backend:** Guards personalizados de NestJS (`@Permissions('songs.create')`). Implementados: `JwtAuthGuard` + `PermissionsGuard` + decorator `@Permissions`.
+- **Frontend:** Context de Auth expone `can('permiso.nombre')` (equivalente móvil de `@can` en Laravel). Implementado en Bloque B2.
+- **Verificación obligatoria:** el backend valida pertenencia al grupo en cada request. (Pendiente, Bloque C).
   
 ---  
   
 ## 4. MÓDULOS FUNCIONALES  
   
 ### 4.1 Autenticación y Usuarios  
-- [x] Diseño conceptual  
-- [ ] Registro de usuario (email + password)  
-- [ ] Login con email/password  
-- [ ] Login con Google OAuth  
-- [ ] Verificación de correo electrónico  
-- [ ] Recuperación de contraseña (email con token)  
-- [ ] Cambio de contraseña  
-- [ ] Refresh tokens y rotación  
-- [ ] Logout (revocación de tokens)  
-- [ ] Perfil de usuario (editar datos, foto, instrumento)  
-- [ ] Configuración (notificaciones, idioma, tema)  
+- [x] Diseño conceptual
+- [x] Registro de usuario (email + password, con verificación por correo)
+- [x] Login con email/password (con política de contraseña fuerte)
+- [ ] Login con Google OAuth
+- [x] Verificación de correo electrónico (token de 24h)
+- [x] Recuperación de contraseña (email con token de 1h)
+- [x] Cambio de contraseña (al recuperar o editar perfil)
+- [x] Refresh tokens y rotación (un solo uso)
+- [x] Logout (revocación de tokens)
+- [x] Perfil de usuario (editar nombre, correo, contraseña)
+- [ ] Configuración (notificaciones, idioma, tema)
+
+**Reglas implementadas:**
+- Cambio de correo → revoca todas las sesiones + nuevo correo de verificación
+- Login, register y /auth/me devuelven el mismo usuario enriquecido (con roles y permisos)
+- Errores de validación en español, mostrados bajo cada campo en la UI  
   
 ### 4.2 Grupos Musicales  
 - [ ] Crear grupo (coro, banda, orquesta, grupo vocal, otro)  
@@ -260,45 +270,74 @@ Para cada recurso se definen permisos CRUD:
   
 ## 5. ESTADO ACTUAL DEL DESARROLLO  
   
-### ✅ Completado  
-- [x] Definición del concepto y nombre: **Mi SetList**  
-- [x] Definición del stack tecnológico  
-- [x] Diseño conceptual de módulos y funcionalidades  
-- [x] Logo inicial generado  
-- [x] Creación de este documento maestro  
-  
-### 🔄 En Progreso  
-- [ ] Configuración inicial del proyecto  
-- [ ] Setup de Docker Compose (PostgreSQL + Mailpit + Redis)  
-- [ ] Inicialización del backend con NestJS  
-- [ ] Inicialización del frontend con Expo  
-  
-### ⏳ Pendiente (Fase 1 - MVP, 2 semanas)  
-- [ ] Backend: estructura base NestJS  
-- [ ] Backend: módulo de autenticación completo  
-- [ ] Backend: módulo de usuarios y perfil  
-- [ ] Backend: módulo de grupos  
-- [ ] Backend: módulo de canciones básico  
-- [ ] Frontend: estructura base Expo + TypeScript  
-- [ ] Frontend: pantallas de auth (login, registro)  
-- [ ] Frontend: navegación principal  
-- [ ] Frontend: lista de grupos y canciones  
-- [ ] Conexión frontend ↔ backend  
-  
-### ⏳ Pendiente (Fase 2 - Core features, 2 semanas)  
-- [ ] Eventos con mapas  
-- [ ] Setlists y reordenamiento  
-- [ ] Modo Escenario  
-- [ ] Subida de archivos  
-- [ ] Generación de PDFs  
-  
-### ⏳ Pendiente (Fase 3 - Pulido, 2 semanas)  
-- [ ] Notificaciones (push + email)  
-- [ ] Versión web  
-- [ ] Tests automatizados  
-- [ ] CI/CD con GitHub Actions  
-- [ ] Deploy a producción (backend + frontend)  
-- [ ] Video demo para portafolio  
+## 5. ESTADO ACTUAL DEL DESARROLLO
+
+### ✅ Completado
+
+**Bloque A — Autenticación completa:**
+- [x] Backend: política de contraseña fuerte (8+ chars, mayúscula, minúscula, número, símbolo)
+- [x] Backend: errores en español por campo (ValidationPipe personalizado)
+- [x] Backend: recuperación de contraseña con token por correo
+- [x] Backend: logo servido por API (`/api/v1/public/logo`)
+- [x] Backend: correos con plantilla de marca (header morado + botón redondeado)
+- [x] Móvil: ojitos 👁 en campos de contraseña
+- [x] Móvil: confirmación de contraseña en registro
+- [x] Móvil: errores mostrados bajo cada campo
+- [x] Móvil: logo en todas las pantallas
+- [x] Móvil: pantallas de "olvidé contraseña" y "restablecer contraseña"
+
+**Bloque B — RBAC y administración:**
+- [x] Backend: modelo users ↔ roles ↔ permissions (estilo Spatie)
+- [x] Backend: seeder con roles Administrador y Usuario
+- [x] Backend: decorator `@Permissions` y `PermissionsGuard`
+- [x] Backend: CRUD completo de usuarios con permisos
+- [x] Backend: CRUD completo de roles con permisos (crear, editar, eliminar)
+- [x] Backend: reglas de seguridad (admin intocable, roles nunca vacíos)
+- [x] Backend: re-verificación de correo al cambiar email
+- [x] Móvil: Context con `can()` para mostrar/ocultar UI según permisos
+- [x] Móvil: Home con secciones condicionales (Administración solo si tiene permisos)
+- [x] Móvil: pantalla de perfil propia
+- [x] Móvil: panel de administración de usuarios (CRUD con búsqueda, paginación, confirmación)
+- [x] Móvil: panel de gestión de roles (CRUD con checkboxes agrupados)
+- [x] Móvil: helper de diálogos multiplataforma (`showAlert`, `confirmAction`)
+
+### 🔄 En Progreso
+- Ninguno actualmente
+
+### ⏳ Pendiente
+
+**Paso 5 — Grupos musicales (Bloque C):**
+- [ ] Modelo `Group` con ownerId y tipo (coro, banda, orquesta, grupo vocal, otro)
+- [ ] Modelo `GroupMember` con roles Owner/Admin/Member
+- [ ] Modelo `Invitation` para invitaciones por email o enlace
+- [ ] Endpoints de gestión de grupos (crear, editar, eliminar)
+- [ ] Endpoints de miembros (invitar, aceptar, rechazar, expulsar, cambiar rol)
+- [ ] Pantalla móvil "Mis grupos" + detalle de grupo
+
+**Paso 6 — Setlists y canciones (Bloque D):**
+- [ ] Modelo `Song` con letra, acordes, tonalidad, BPM, archivos
+- [ ] Modelo `Setlist` con orden de canciones
+- [ ] Modelo `SongCategory` y pivot
+- [ ] Modelo `SongNote` (notas personales por músico)
+- [ ] Modelo `FavoriteSong`
+- [ ] Endpoints CRUD de canciones y setlists
+- [ ] Pantallas móviles correspondientes
+
+**Paso 7 — Reproductor de audio (Bloque E):**
+- [ ] `expo-av` para reproducción
+- [ ] Subida de archivos (S3 / almacenamiento local)
+- [ ] Controles de reproducción integrados
+
+**Paso 8 — Modo offline (Bloque F):**
+- [ ] Cache con AsyncStorage
+- [ ] Cola de sincronización al recuperar conexión
+
+**Paso 9 — Calidad y despliegue (Bloque G):**
+- [ ] Tests backend (Vitest) y móvil (Jest)
+- [ ] Dockerfile multi-stage para la API
+- [ ] Deploy web en Vercel
+- [ ] Builds iOS/Android con EAS
+- [ ] CI/CD con GitHub Actions
   
 ---  
   
@@ -322,17 +361,49 @@ Para cada recurso se definen permisos CRUD:
 ### Tablas principales  
   
 ```  
-users  
-├── id (uuid, PK)  
-├── name (string)  
-├── email (string, unique)  
-├── password_hash (string, nullable para OAuth)  
-├── avatar_url (string, nullable)  
-├── instrument (string, nullable)  
-├── email_verified_at (timestamp, nullable)  
-├── google_id (string, nullable, unique)  
-├── created_at  
-└── updated_at  
+### Tablas implementadas (Bloques A y B)
+
+roles
+├── id (uuid, PK)
+├── name (string, unique)
+├── description (text, nullable)
+├── created_at
+└── updated_at
+
+permissions
+├── id (uuid, PK)
+├── name (string, unique)  ← formato: "recurso.accion"
+├── group (string)  ← "users", "roles", "profile"
+├── description (text, nullable)
+└── created_at
+
+user_roles (tabla pivote)
+├── user_id (FK → users)
+├── role_id (FK → roles)
+├── created_at
+└── PK(user_id, role_id)
+
+role_permissions (tabla pivote)
+├── role_id (FK → roles)
+├── permission_id (FK → permissions)
+├── created_at
+└── PK(role_id, permission_id)
+
+email_verification_tokens
+├── id (uuid, PK)
+├── user_id (FK → users, ON DELETE CASCADE)
+├── token_hash (string, unique)  ← SHA-256
+├── expires_at (timestamp)
+├── used_at (timestamp, nullable)
+└── created_at
+
+password_reset_tokens
+├── id (uuid, PK)
+├── user_id (FK → users, ON DELETE CASCADE)
+├── token_hash (string, unique)  ← SHA-256
+├── expires_at (timestamp)
+├── used_at (timestamp, nullable)
+└── created_at
   
 groups  
 ├── id (uuid, PK)  
@@ -530,48 +601,87 @@ Ejemplo: `feat(auth): implementar login con Google OAuth`
   
 ### 8.5 Organización de carpetas (backend NestJS)  
 ```  
-api/  
-├── src/  
-│   ├── auth/           ← módulo de autenticación  
-│   ├── users/          ← módulo de usuarios  
-│   ├── groups/         ← módulo de grupos  
-│   ├── songs/          ← módulo de canciones  
-│   ├── events/         ← módulo de eventos  
-│   ├── setlists/       ← módulo de setlists  
-│   ├── files/          ← módulo de subida de archivos  
-│   ├── notifications/  ← módulo de notificaciones  
-│   ├── common/         ← utilidades compartidas  
-│   │   ├── decorators/  
-│   │   ├── guards/  
-│   │   ├── interceptors/  
-│   │   └── pipes/  
-│   └── prisma/         ← servicio Prisma  
-├── prisma/  
-│   ├── schema.prisma  
-│   ├── migrations/  
-│   └── seed.ts  
-├── test/  
-├── docker-compose.yml  
-└── package.json  
+api/
+├── assets/
+│   └── logo.png                    ← Logo oficial (usado en correos)
+├── src/
+│   ├── auth/                       ← Login, registro, recuperación, JWT
+│   │   ├── dto/                    ← LoginDto, RegisterDto, etc.
+│   │   ├── auth.controller.ts
+│   │   ├── auth.service.ts
+│   │   ├── jwt-auth.guard.ts
+│   │   ├── jwt-payload.ts
+│   │   └── current-user.decorator.ts
+│   ├── users/                      ← CRUD de usuarios (admin)
+│   │   ├── dto/user.dto.ts
+│   │   ├── users.controller.ts
+│   │   ├── users.service.ts
+│   │   └── users.module.ts
+│   ├── roles/                      ← CRUD de roles y permisos
+│   │   ├── dto/role.dto.ts
+│   │   ├── roles.controller.ts
+│   │   ├── roles.service.ts
+│   │   └── roles.module.ts
+│   ├── mail/                       ← Nodemailer + plantillas
+│   │   ├── email-template.ts
+│   │   ├── mail.service.ts
+│   │   └── mail.module.ts
+│   ├── public/                     ← Recursos públicos (logo)
+│   │   ├── public.controller.ts
+│   │   └── public.module.ts
+│   ├── common/                     ← Utilidades compartidas
+│   │   ├── decorators/permissions.decorator.ts
+│   │   ├── guards/permissions.guard.ts
+│   │   ├── design-tokens.ts
+│   │   └── common.module.ts
+│   ├── prisma/                     ← PrismaService
+│   ├── health/                     ← Health check
+│   ├── app.module.ts
+│   └── main.ts
+├── prisma/
+│   ├── schema.prisma
+│   ├── seed.ts
+│   └── migrations/
+├── .env
+└── package.json
 ```  
   
 ### 8.6 Organización de carpetas (frontend Expo)  
 ```  
-mobile/  
-├── app/                ← rutas (Expo Router)  
-│   ├── (auth)/         ← grupo de rutas de auth  
-│   ├── (tabs)/         ← tabs principales  
-│   └── _layout.tsx  
-├── src/  
-│   ├── components/     ← componentes reutilizables  
-│   ├── hooks/          ← custom hooks  
-│   ├── services/       ← llamadas a API  
-│   ├── stores/         ← Zustand stores  
-│   ├── types/          ← tipos TypeScript  
-│   ├── utils/          ← utilidades  
-│   └── constants/      ← constantes  
-├── assets/             ← imágenes, fuentes  
-└── package.json  
+mobile/
+├── assets/
+│   └── logo.png                    ← Logo cuadrado (512x512)
+├── src/
+│   ├── components/
+│   │   ├── PasswordInput.tsx       ← Campo de contraseña con ojito 👁
+│   │   └── UserFormModal.tsx       ← Modal reutilizable para crear/editar usuarios
+│   ├── constants/
+│   │   ├── theme.ts                ← Tokens de color (fuente única)
+│   │   └── config.ts               ← API_URL según plataforma
+│   ├── context/
+│   │   └── AuthContext.tsx         ← Context con `can()` para permisos
+│   ├── navigation/
+│   │   └── useNavigation.ts        ← Router casero (migrará a Expo Router)
+│   ├── screens/
+│   │   ├── AuthScreen.tsx          ← Login/Registro
+│   │   ├── ForgotPasswordScreen.tsx
+│   │   ├── ResetPasswordScreen.tsx
+│   │   ├── HomeScreen.tsx          ← Home con secciones condicionales
+│   │   ├── ProfileScreen.tsx       ← Perfil propio
+│   │   ├── UsersAdminScreen.tsx    ← CRUD de usuarios
+│   │   └── RolesAdminScreen.tsx    ← CRUD de roles
+│   ├── services/
+│   │   ├── api.ts                  ← Instancia de axios
+│   │   ├── storage.ts              ← SecureStore/localStorage
+│   │   ├── auth.service.ts
+│   │   ├── users.service.ts
+│   │   └── roles.service.ts
+│   ├── styles/
+│   │   └── global.ts               ← Estilos globales reutilizables
+│   └── utils/
+│       └── dialogs.ts              ← showAlert/confirmAction multiplataforma
+├── App.tsx                          ← Punto de entrada
+└── package.json
 ```  
   
 ---  
@@ -676,72 +786,30 @@ Para considerar el proyecto completo y listo para portafolio:
 
 Regla: antes de crear un proyecto nuevo, revisar esta tabla y elegir puertos libres.
 
-## NOTAS DE ARQUITECTURA (DESARROLLO LOCAL)
-- Solo se dockerizan PostgreSQL y Mailpit: son servicios de infraestructura
-  dolorosos de instalar nativamente.
-- La API NestJS corre en el host (`npm run start:dev`): iteración rápida,
-  debugging nativo y watch mode sin fricción.
-- La app Expo corre en Metro (host) y se renderiza en dispositivo/navegador:
-  no hay servidor que contenerizar en desarrollo.
-- Diferencia con Mis Gastos: Laravel requería contenedores Nginx + PHP-FPM
-  para replicar el servidor de producción; Node ya está instalado en la máquina.
-- PENDIENTE (fase deploy): Dockerfile multi-stage para la API.
+## 13. DECISIONES TÉCNICAS CLAVE (implementadas)
 
-## SISTEMA DE DISEÑO Y ESTILOS CENTRALIZADOS
-- `mobile/src/constants/theme.ts`: tokens de color (fuente única).
-- `mobile/src/styles/global.ts`: estilos globales reutilizables
-  (el "app.css" de la app). Las pantallas componen:
-  `style={[globalStyles.x, styles.locales]}`.
-- Correos: `api/src/mail/email-template.ts` con CSS inline usando
-  `api/src/common/design-tokens.ts` (mantener sincronizado con el theme móvil).
+### 13.1 Access token corto (15m) + Refresh token largo (7d) rotativo
+Los refresh tokens son de **un solo uso**: al usarlos, se invalidan y se emite uno nuevo. Esto permite detectar robo (si un refresh se usa dos veces, revocamos toda la sesión del usuario).
 
-## ESTADO (actualización)
-- [x] Auth móvil/web conectada a la API (login, registro, sesión persistente, logout).
-- [x] Correo de verificación con plantilla de marca.
-- [x] Estilos centralizados (global.ts) y tokens compartidos.
+### 13.2 Tokens hasheados en BD (SHA-256)
+Solo el cliente conoce el token crudo. Si alguien roba la base de datos, los tokens no sirven. La contraseña usa bcrypt (más lenta, apropiada para passwords); los tokens usan SHA-256 (rápido, apropiado para secretos de alta entropía).
 
-## RBAC — CONTROL DE ACCESO POR ROLES (Bloque B1 ✅)
+### 13.3 Errores por campo en el ValidationPipe
+El backend devuelve `{ fields: { email: "...", password: "..." } }` para que el móvil pinte cada error **bajo su campo correspondiente** en vez de un toast genérico.
 
-### Modelo de datos (estilo Spatie/Laravel)
-- `users ↔ roles` (muchos a muchos vía `user_roles`)
-- `roles ↔ permissions` (muchos a muchos vía `role_permissions`)
+### 13.4 Mensajes genéricos en autenticación
+Login y "olvidé contraseña" devuelven mensajes que no revelan si el correo existe (evita enumeración de cuentas).
 
-### Roles por defecto (seeder: `npx prisma db seed`)
-| Rol | Permisos | Reglas |
-|---|---|---|
-| **Administrador** | TODOS | Nunca puede perder permisos (regla en `RolesService`) |
-| **Usuario** | `profile.view`, `profile.edit` | Nunca puede quedar vacío (todo rol ≥ 1 permiso) |
+### 13.5 Respuestas consistentes
+`/auth/login`, `/auth/register` y `/auth/me` devuelven el **mismo usuario enriquecido** (con roles y permisos) para evitar el bug del "primer login sin permisos hasta recargar".
 
-### Catálogo de permisos
-- `users.view / create / edit / delete`
-- `roles.view / edit`
-- `profile.view / edit`
+### 13.6 Helper de diálogos multiplataforma
+`mobile/src/utils/dialogs.ts` centraliza `showAlert` y `confirmAction`. En web usa `window.alert/confirm`; en móvil nativo usa `Alert.alert`. Ninguna pantalla sufre más el "alert silencioso en web".
 
-### Protección de rutas
-- `@Permissions('recurso.accion')` + `PermissionsGuard` (corre después de `JwtAuthGuard`).
-- El payload del JWT viaja con `sub`; los permisos se resuelven en BD: user → roles → permissions.
+### 13.7 `editable` en vez de `disabled`
+`TextInput` de React Native no acepta `disabled` (esa es de HTML). Se usa `editable={false}`. Sutileza que en web no se nota pero en móvil sí falla.
 
-### Reglas de negocio implementadas
-- Registro público y creación por admin asignan rol **Usuario** automáticamente (el usuario no elige rol).
-- Toda cuenta (pública o creada por admin) requiere verificación de correo.
-- Cambio de correo → `emailVerifiedAt = null` + nuevo token + correo + revocación de sesiones (logout forzado).
-- Admin no puede eliminarse a sí mismo.
-- Usuarios sin rol reciben "Usuario" vía seeder.
-
-### Credenciales de desarrollo
-| Correo | Contraseña | Rol |
-|---|---|---|
-| admin@misetlist.app | Admin123! | Administrador |
-| demo@misetlist.app | Demo123! | Usuario |
-
-### Endpoints del Bloque B1
-- `POST /auth/forgot-password` · `POST /auth/reset-password`
-- `PATCH /users/me` (requiere `profile.edit`)
-- `GET/POST /users` · `PATCH/DELETE /users/:id` (permisos `users.*`)
-- `GET /roles` · `GET /permissions` · `PATCH /roles/:id` (permisos `roles.*`)
-
-### PENDIENTES
-- [ ] B2: Panel de administración en el móvil (CRUD usuarios + gestión de roles/permisos con UI).
-- [ ] Paso 5: Grupos musicales (Owner/Admin/Member).
+### 13.8 Prisma 7 + driver adapters
+Prisma 7 introdujo los **driver adapters** como forma explícita de conectar a la base de datos. Desde 7.10+ son obligatorios en todos los contextos. Usamos el generador clásico `prisma-client-js` por mejor integración con TypeScript.
   
 **FIN DEL DOCUMENTO**  
