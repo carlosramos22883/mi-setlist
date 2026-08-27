@@ -34,7 +34,7 @@ export interface GroupsPage {
 }
 
 // GET /groups?page=&limit=
-export async function listMyGroups(params: { page?: number; limit?: number }) {
+export async function listMyGroups(params: { page?: number; limit?: number; search?: string }) {
   const { data } = await api.get<GroupsPage>('/groups', { params });
   return data;
 }

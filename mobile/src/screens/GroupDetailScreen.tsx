@@ -20,6 +20,8 @@ import type { GroupDetail, GroupMember } from '../services/groups.service';
 import { colors, type Palette } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
 import { confirmAction, showAlert } from '../utils/dialogs';
+import ScreenHeader from '../components/ScreenHeader' 
+import RowActions from '../components/RowActions' 
 
 const API_URL = 'http://localhost:3000/api/v1';
 
@@ -199,11 +201,7 @@ export default function GroupDetailScreen({ groupId, onBack }: Props) {
   return (
     <View style={globalStyles.screen}>
       <ScrollView contentContainerStyle={styles.scroll}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={onBack}>
-            <Text style={globalStyles.link}>← Volver</Text>
-          </TouchableOpacity>
-        </View>
+        <ScreenHeader title={group.name} subtitle={TYPE_LABELS[group.type]} onBack={onBack} />
 
         {/* Cabecera del grupo */}
         <View style={styles.groupHeader}>
@@ -271,26 +269,12 @@ export default function GroupDetailScreen({ groupId, onBack }: Props) {
                   <Text style={styles.memberRole}>{ROLE_LABELS[item.role]}</Text>
                 </View>
 
-                <View style={styles.memberActions}>
-                  {canChangeRoles && !isOwner && (
-                    <TouchableOpacity
-                      style={styles.iconBtn}
-                      onPress={() => handleChangeRole(item)}
-                    >
-                      <Text style={styles.iconBtnText}>
-                        {item.role === 'admin' ? '⭐' : '🎵'}
-                      </Text>
-                    </TouchableOpacity>
-                  )}
-                  {canRemove && !isOwner && (
-                    <TouchableOpacity
-                      style={[styles.iconBtn, styles.deleteBtn]}
-                      onPress={() => handleRemoveMember(item)}
-                    >
-                      <Text style={styles.iconBtnText}>🗑️</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
+                <RowActions
+                    onEdit={() => handleChangeRole(item)}
+                    onDelete={() => handleRemoveMember(item)}
+                    canEdit={canChangeRoles && !isOwner}
+                    canDelete={canRemove && !isOwner}
+                />
               </View>
             );
           }}

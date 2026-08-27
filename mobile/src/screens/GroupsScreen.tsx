@@ -1,24 +1,22 @@
 // ============================================================
-// GROUPS SCREEN — lista de grupos del usuario
+// GROUPS SCREEN — lista de grupos con toolbar estándar
 // ============================================================
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  FlatList,
-  Image,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+  ActivityIndicator, FlatList, Image, RefreshControl, ScrollView,
+  StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
-import { useAuth } from '../context/AuthContext';
 import * as GroupsService from '../services/groups.service';
 import type { Group } from '../services/groups.service';
-import { colors, type Palette } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
-import { showAlert } from '../utils/dialogs';
+import type { Palette } from '../constants/theme';
+import { confirmAction, showAlert } from '../utils/dialogs';
+import ScreenHeader from '../components/ScreenHeader';
+import ListToolbar from '../components/ListToolbar';
+import PaginationBar from '../components/PaginationBar';
+import EmptyState from '../components/EmptyState';
+import RowActions from '../components/RowActions';
+import GroupFormModal from '../components/GroupFormModal';
 
 const API_URL = 'http://localhost:3000/api/v1';
 
@@ -27,33 +25,38 @@ interface Props {
 }
 
 const TYPE_LABELS: Record<string, string> = {
-  band: 'Banda',
-  choir: 'Coro',
-  orchestra: 'Orquesta',
-  vocal_group: 'Grupo vocal',
-  other: 'Otro',
+  band: 'Banda', choir: 'Coro', orchestra: 'Orquesta',
+  vocal_group: 'Grupo vocal', other: 'Otro',
 };
-
 const ROLE_LABELS: Record<string, string> = {
-  owner: 'Dueño',
-  admin: 'Admin',
-  member: 'Miembro',
+  owner: 'Dueño', admin: 'Admin', member: 'Miembro',
 };
 
 export default function GroupsScreen({ onNavigate }: Props) {
   const { c, g: globalStyles } = useTheme();
   const styles = buildStyles(c);
-  const { can } = useAuth();
+
   const [groups, setGroups] = useState<Group[]>([]);
+  const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
+  const [modalVisible, setModalVisible] = useState(false);
+  const [editingGroup, setEditingGroup] = useState<Group | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editType, setEditType] = useState<Group['type']>('band');
+
   const loadGroups = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await GroupsService.listMyGroups({ page, limit: 10 });
+      const res = await GroupsService.listMyGroups({
+        page,
+        limit: 10,
+        search: search.trim() || undefined,
+      });
       setGroups(res.data);
       setTotalPages(res.meta.totalPages);
     } catch (e: any) {
@@ -62,7 +65,7 @@ export default function GroupsScreen({ onNavigate }: Props) {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [page]);
+  }, [page, search]);
 
   useEffect(() => {
     loadGroups();
@@ -73,11 +76,43 @@ export default function GroupsScreen({ onNavigate }: Props) {
     loadGroups();
   }
 
+  function handleSearch(text: string) {
+    setSearch(text);
+    setPage(1);
+  }
+
+  // Abrir modal de edición con los datos del grupo
+  function openEdit(group: Group) {
+    setEditingGroup(group);
+    setEditName(group.name);
+    setEditDescription(group.description ?? '');
+    setEditType(group.type);
+    setModalVisible(true);
+  }
+
+  // Eliminar con confirmación estándar (solo owner)
+  function handleDelete(group: Group) {
+    confirmAction(
+      'Eliminar grupo',
+      `¿Eliminar "${group.name}"? Esta acción lo desactivará.`,
+      async () => {
+        try {
+          await GroupsService.deleteGroup(group.id);
+          showAlert('Éxito', 'Grupo eliminado');
+          loadGroups();
+        } catch (e: any) {
+          showAlert('Error', e?.response?.data?.message ?? 'No se pudo eliminar');
+        }
+      },
+    );
+  }
+
   function renderGroup({ item }: { item: Group }) {
-    const logoUrl = item.logoPath ? `${API_URL}/${item.logoPath}` : null;
-    return (
+  const logoUrl = item.logoPath ? `${API_URL}/${item.logoPath}` : null;
+  return (
+    <View style={styles.card}>
       <TouchableOpacity
-        style={styles.card}
+        style={styles.cardBody}
         onPress={() => onNavigate('groupDetail', { groupId: item.id })}
         activeOpacity={0.7}
       >
@@ -91,9 +126,7 @@ export default function GroupsScreen({ onNavigate }: Props) {
         <View style={styles.cardContent}>
           <Text style={styles.groupName}>{item.name}</Text>
           {item.description && (
-            <Text style={styles.groupDescription} numberOfLines={2}>
-              {item.description}
-            </Text>
+            <Text style={styles.groupDescription} numberOfLines={2}>{item.description}</Text>
           )}
           <View style={styles.meta}>
             <Text style={styles.type}>{TYPE_LABELS[item.type]}</Text>
@@ -102,124 +135,85 @@ export default function GroupsScreen({ onNavigate }: Props) {
           </View>
         </View>
       </TouchableOpacity>
-    );
-  }
 
-  return (
-    <View style={globalStyles.screen}>
-      <ScrollView contentContainerStyle={styles.scroll}>
-        <View style={styles.header}>
-          <Text style={globalStyles.title}>Mis grupos</Text>
-          <Text style={globalStyles.subtitle}>
-            Grupos musicales donde participas
-          </Text>
-        </View>
-
-        {loading && groups.length === 0 ? (
-          <ActivityIndicator color={c.primary} style={styles.loader} />
-        ) : (
-          <FlatList
-            data={groups}
-            keyExtractor={(item) => item.id}
-            renderItem={renderGroup}
-            refreshControl={
-              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-            }
-            ListEmptyComponent={
-              <Text style={styles.empty}>
-                No perteneces a ningún grupo aún
-              </Text>
-            }
-            scrollEnabled={false}
-          />
-        )}
-
-        {totalPages > 1 && (
-          <View style={styles.pagination}>
-            <TouchableOpacity
-              style={[globalStyles.button, styles.pageBtn]}
-              onPress={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1}
-            >
-              <Text style={globalStyles.buttonText}>← Anterior</Text>
-            </TouchableOpacity>
-            <Text style={styles.pageInfo}>
-              Página {page} de {totalPages}
-            </Text>
-            <TouchableOpacity
-              style={[globalStyles.button, styles.pageBtn]}
-              onPress={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page === totalPages}
-            >
-              <Text style={globalStyles.buttonText}>Siguiente →</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      </ScrollView>
-
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={() => onNavigate('createGroup')}
-      >
-        <Text style={styles.fabText}>+</Text>
-      </TouchableOpacity>
+      {/* 🆕 acciones estándar, visibles según el rol en el grupo */}
+      <RowActions
+        onEdit={() => openEdit(item)}
+        onDelete={() => handleDelete(item)}
+        canEdit={item.myRole === 'owner' || item.myRole === 'admin'}
+        canDelete={item.myRole === 'owner'}
+      />
     </View>
   );
 }
 
-const buildStyles = (c: Palette) => StyleSheet.create({
-  scroll: { padding: 24, paddingTop: 48, paddingBottom: 80 },
-  header: { marginBottom: 16 },
-  loader: { marginTop: 40 },
-  empty: { color: c.textMuted, textAlign: 'center', marginTop: 40, fontSize: 14 },
-  card: {
-    backgroundColor: c.surface,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    flexDirection: 'row',
-    borderWidth: 1,
-    borderColor: c.border,
-  },
-  logo: {
-    width: 64,
-    height: 64,
-    borderRadius: 8,
-    marginRight: 12,
-  },
-  logoPlaceholder: {
-    backgroundColor: c.surface2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logoPlaceholderText: { fontSize: 32 },
-  cardContent: { flex: 1 },
-  groupName: { color: c.text, fontSize: 16, fontWeight: '700', marginBottom: 4 },
-  groupDescription: { color: c.textSecondary, fontSize: 13, marginBottom: 8 },
-  meta: { flexDirection: 'row', gap: 4, flexWrap: 'wrap' },
-  type: { color: c.accent, fontSize: 12, fontWeight: '600' },
-  role: { color: c.textSecondary, fontSize: 12 },
-  members: { color: c.textSecondary, fontSize: 12 },
-  pagination: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 16,
-    gap: 8,
-  },
-  pageBtn: { flex: 1 },
-  pageInfo: { color: c.textSecondary, fontSize: 13 },
-  fab: {
-    position: 'absolute',
-    right: 24,
-    bottom: 24,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: c.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    elevation: 4, // sombra en Android; en web se ignora sin warning
-  },
-  fabText: { color: '#FFFFFF', fontSize: 28, fontWeight: '700', marginTop: -2 },
-});
+  return (
+    <ScrollView style={globalStyles.screen} contentContainerStyle={styles.scroll}>
+      <ScreenHeader title="Mis grupos" subtitle="Grupos musicales donde participas" />
+
+      <ListToolbar
+        search={search}
+        onSearchChange={handleSearch}
+        searchPlaceholder="Buscar grupo..."
+        onCreate={() => {
+          setEditingGroup(null);
+          setModalVisible(true);
+        }}
+        createLabel="+ Nuevo grupo"
+      />
+
+      {loading && groups.length === 0 ? (
+        <ActivityIndicator color={c.primary} style={styles.loader} />
+      ) : (
+        <FlatList
+          data={groups}
+          keyExtractor={(item) => item.id}
+          renderItem={renderGroup}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          ListEmptyComponent={<EmptyState message="No perteneces a ningún grupo aún" icon="musical-notes-outline" />}
+          scrollEnabled={false}
+        />
+      )}
+
+      <PaginationBar
+        page={page}
+        totalPages={totalPages}
+        onPrev={() => setPage((p) => Math.max(1, p - 1))}
+        onNext={() => setPage((p) => Math.min(totalPages, p + 1))}
+      />
+      <GroupFormModal
+        visible={modalVisible}
+        onClose={() => setModalVisible(false)}
+        onSaved={() => loadGroups()}
+        initialGroup={editingGroup}
+      />
+    </ScrollView>
+  );
+}
+
+const buildStyles = (c: Palette) =>
+  StyleSheet.create({
+    scroll: { padding: 24, paddingTop: 16 },
+    loader: { marginTop: 40 },
+    card: {
+      backgroundColor: c.surface,
+      borderRadius: 12,
+      padding: 16,
+      marginBottom: 12,
+      flexDirection: 'row',
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: c.border,
+    },
+    cardBody: { flex: 1, flexDirection: 'row' },
+    logo: { width: 64, height: 64, borderRadius: 8, marginRight: 12 },
+    logoPlaceholder: { backgroundColor: c.surface2, alignItems: 'center', justifyContent: 'center' },
+    logoPlaceholderText: { fontSize: 32 },
+    cardContent: { flex: 1 },
+    groupName: { color: c.text, fontSize: 16, fontWeight: '700', marginBottom: 4 },
+    groupDescription: { color: c.textSecondary, fontSize: 13, marginBottom: 8 },
+    meta: { flexDirection: 'row', gap: 4, flexWrap: 'wrap' },
+    type: { color: c.accent, fontSize: 12, fontWeight: '600' },
+    role: { color: c.textSecondary, fontSize: 12 },
+    members: { color: c.textSecondary, fontSize: 12 },
+  });

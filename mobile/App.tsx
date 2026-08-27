@@ -16,7 +16,6 @@ import { colors } from './src/constants/theme';
 import UsersAdminScreen from './src/screens/UsersAdminScreen';
 import RolesAdminScreen from './src/screens/RolesAdminScreen';
 import GroupsScreen from './src/screens/GroupsScreen';
-import CreateGroupScreen from './src/screens/CreateGroupScreen';
 import GroupDetailScreen from './src/screens/GroupDetailScreen';
 import { ThemeProvider } from './src/context/ThemeContext';
 import AppShell from './src/components/AppShell';
@@ -66,9 +65,6 @@ function Root() {
         break;
       case 'groups':
         content = <GroupsScreen onNavigate={(to, p) => navigate(to as ScreenName, p)} />;
-        break;
-      case 'createGroup':
-        content = <CreateGroupScreen onBack={() => navigate('groups')} onCreated={() => navigate('groups')} />;
         break;
       case 'groupDetail':
         content = <GroupDetailScreen groupId={params.groupId} onBack={() => navigate('groups')} />;

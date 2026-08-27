@@ -1,22 +1,24 @@
 // ============================================================
 // USERS ADMIN SCREEN — CRUD completo de usuarios
 // ============================================================
-// Lista con búsqueda + paginación.
-// Crear / Editar / Eliminar se muestran SOLO si el usuario
-// tiene el permiso correspondiente (can('users.create'), etc.).
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator, FlatList, RefreshControl, ScrollView,
-  StyleSheet, Text, TextInput, TouchableOpacity, View,
+  StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
 import { confirmAction, showAlert } from '../utils/dialogs';
 import { useAuth } from '../context/AuthContext';
 import * as UsersService from '../services/users.service';
 import type { AdminUser } from '../services/users.service';
 import * as RolesService from '../services/roles.service';
-import { colors, type Palette } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
+import { colors, type Palette } from '../constants/theme';
 import UserFormModal from '../components/UserFormModal';
+import ScreenHeader from '../components/ScreenHeader';
+import ListToolbar from '../components/ListToolbar';
+import PaginationBar from '../components/PaginationBar';
+import EmptyState from '../components/EmptyState';
+import RowActions from '../components/RowActions';
 
 interface Props {
   onBack: () => void;
@@ -24,7 +26,6 @@ interface Props {
 
 export default function UsersAdminScreen({ onBack }: Props) {
   const { can, user: currentUser } = useAuth();
-
   const { c, g: globalStyles } = useTheme();
   const styles = buildStyles(c);
 
@@ -34,30 +35,22 @@ export default function UsersAdminScreen({ onBack }: Props) {
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-
   const [includeDeleted, setIncludeDeleted] = useState(false);
 
-  // Modal state
   const [modalVisible, setModalVisible] = useState(false);
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
-
-  // ID del rol "Usuario" para preseleccionarlo al crear
   const [defaultRoleId, setDefaultRoleId] = useState<string | null>(null);
 
-  // Carga el ID del rol "Usuario" una sola vez
   useEffect(() => {
     (async () => {
       try {
         const roles = await RolesService.listRoles();
         const usuario = roles.find((r) => r.name === 'Usuario');
         if (usuario) setDefaultRoleId(usuario.id);
-      } catch {
-        // si falla, seguimos sin preselección
-      }
+      } catch {}
     })();
   }, []);
 
-  // Carga la lista de usuarios (se re-ejecuta al cambiar page/search)
   const loadUsers = useCallback(async () => {
     setLoading(true);
     try {
@@ -70,7 +63,7 @@ export default function UsersAdminScreen({ onBack }: Props) {
       setUsers(res.data);
       setTotalPages(res.meta.totalPages);
     } catch {
-        showAlert('Error', 'No se pudieron cargar los usuarios');
+      showAlert('Error', 'No se pudieron cargar los usuarios');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -81,31 +74,26 @@ export default function UsersAdminScreen({ onBack }: Props) {
     loadUsers();
   }, [loadUsers]);
 
-  // Pull-to-refresh (desliza hacia abajo para recargar)
   function onRefresh() {
     setRefreshing(true);
     loadUsers();
   }
 
-  // Buscar: resetea a la página 1
   function handleSearch(text: string) {
     setSearch(text);
     setPage(1);
   }
 
-  // Abrir modal para CREAR
   function openCreate() {
     setEditingUser(null);
     setModalVisible(true);
   }
 
-  // Abrir modal para EDITAR
   function openEdit(user: AdminUser) {
     setEditingUser(user);
     setModalVisible(true);
   }
 
-  // Envío del formulario (crear o editar)
   async function handleModalSubmit(payload: {
     name: string;
     email: string;
@@ -113,7 +101,6 @@ export default function UsersAdminScreen({ onBack }: Props) {
     roleIds: string[];
   }) {
     if (editingUser) {
-      // Modo EDITAR: solo enviamos lo que cambió
       const updatePayload: Record<string, unknown> = {
         name: payload.name,
         email: payload.email,
@@ -122,18 +109,15 @@ export default function UsersAdminScreen({ onBack }: Props) {
       if (payload.password !== '') updatePayload.password = payload.password;
       await UsersService.updateUser(editingUser.id, updatePayload);
     } else {
-      // Modo CREAR
       await UsersService.createUser(payload);
     }
-    // Recargar la lista para ver los cambios
     await loadUsers();
   }
 
-  // Eliminar con confirmación  
   function handleDelete(user: AdminUser) {
     confirmAction(
       'Eliminar usuario',
-      `¿Eliminar a "${user.name}"? Si tiene actividad en el sistema se desactivará; si no, se eliminará definitivamente.`,
+      `¿Seguro que quieres eliminar a "${user.name}"? Esta acción no se puede deshacer.`,
       async () => {
         try {
           await UsersService.deleteUser(user.id);
@@ -145,10 +129,8 @@ export default function UsersAdminScreen({ onBack }: Props) {
     );
   }
 
-
-  // Render de cada fila de usuario
   function renderItem({ item }: { item: AdminUser }) {
-    const isDeleted = item.deletedAt !== null;
+    const isDeleted = 'deletedAt' in item && item.deletedAt !== null;
     const isMe = item.id === currentUser?.id;
     return (
       <View style={[styles.row, isDeleted && styles.rowDeleted]}>
@@ -172,101 +154,56 @@ export default function UsersAdminScreen({ onBack }: Props) {
           {isDeleted && <Text style={styles.deletedBadge}>ELIMINADO</Text>}
         </View>
 
-        <View style={styles.actions}>
-          {can('users.edit') && (
-            <TouchableOpacity style={styles.iconBtn} onPress={() => openEdit(item)}>
-              <Text style={styles.iconBtnText}>✏️</Text>
-            </TouchableOpacity>
-          )}
-          {can('users.delete') && !isMe && (
-            <TouchableOpacity
-              style={[styles.iconBtn, styles.deleteBtn]}
-              onPress={() => handleDelete(item)}
-            >
-              <Text style={styles.iconBtnText}>🗑️</Text>
-            </TouchableOpacity>
-          )}
-        </View>
+        <RowActions
+          onEdit={() => openEdit(item)}
+          onDelete={() => handleDelete(item)}
+          canEdit={can('users.edit')}
+          canDelete={can('users.delete') && !isMe}
+        />
       </View>
     );
   }
 
   return (
-    <View style={globalStyles.screen}>
-      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-        <View style={styles.header}>
-          <TouchableOpacity onPress={onBack}>
-            <Text style={globalStyles.link}>← Volver</Text>
-          </TouchableOpacity>
-          <Text style={globalStyles.title}>Usuarios</Text>
-        </View>
+    <ScrollView style={globalStyles.screen} contentContainerStyle={styles.scroll}>
+      <ScreenHeader title="Usuarios" subtitle="Gestión de cuentas del sistema" onBack={onBack} />
 
-        {/* Buscador + botón crear */}
-        <View style={styles.toolbar}>
-          <TextInput
-            style={[globalStyles.input, styles.searchInput]}
-            placeholder="Buscar por nombre o correo..."
-            placeholderTextColor={c.textMuted}
-            value={search}
-            onChangeText={handleSearch}
-          />
-          <TouchableOpacity
-            style={styles.checkboxWrap}
-            onPress={() => setIncludeDeleted((v) => !v)}
-            >
-            <View style={[styles.checkbox, includeDeleted && styles.checkboxOn]}>
-                {includeDeleted && <Text style={styles.checkmark}>✓</Text>}
-            </View>
-            <Text style={styles.checkboxLabel}>Ver eliminados</Text>
-          </TouchableOpacity>
-          {can('users.create') && (
-            <TouchableOpacity style={globalStyles.button} onPress={openCreate}>
-              <Text style={globalStyles.buttonText}>+ Nuevo</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-
-        {/* Lista de usuarios */}
-        {loading && users.length === 0 ? (
-          <ActivityIndicator color={c.primary} style={styles.loader} />
-        ) : (
-          <FlatList
-            data={users}
-            keyExtractor={(item) => item.id}
-            renderItem={renderItem}
-            refreshControl={
-              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-            }
-            ListEmptyComponent={
-              <Text style={styles.empty}>No se encontraron usuarios</Text>
-            }
-            scrollEnabled={false} // el ScrollView exterior maneja el scroll
-          />
-        )}
-
-        {/* Paginación */}
-        {totalPages > 1 && (
-          <View style={styles.pagination}>
-            <TouchableOpacity
-              style={[globalStyles.button, styles.pageBtn]}
-              onPress={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1}
-            >
-              <Text style={globalStyles.buttonText}>← Anterior</Text>
-            </TouchableOpacity>
-            <Text style={styles.pageInfo}>
-              Página {page} de {totalPages}
-            </Text>
-            <TouchableOpacity
-              style={[globalStyles.button, styles.pageBtn]}
-              onPress={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page === totalPages}
-            >
-              <Text style={globalStyles.buttonText}>Siguiente →</Text>
-            </TouchableOpacity>
+      <ListToolbar
+        search={search}
+        onSearchChange={handleSearch}
+        searchPlaceholder="Buscar por nombre o correo..."
+        onCreate={can('users.create') ? openCreate : undefined}
+      >
+        <TouchableOpacity
+          style={styles.checkboxWrap}
+          onPress={() => setIncludeDeleted((v) => !v)}
+        >
+          <View style={[styles.checkbox, includeDeleted && styles.checkboxOn]}>
+            {includeDeleted && <Text style={styles.checkmark}>✓</Text>}
           </View>
-        )}
-      </ScrollView>
+          <Text style={styles.checkboxLabel}>Ver eliminados</Text>
+        </TouchableOpacity>
+      </ListToolbar>
+
+      {loading && users.length === 0 ? (
+        <ActivityIndicator color={c.primary} style={styles.loader} />
+      ) : (
+        <FlatList
+          data={users}
+          keyExtractor={(item) => item.id}
+          renderItem={renderItem}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          ListEmptyComponent={<EmptyState message="No se encontraron usuarios" icon="people-outline" />}
+          scrollEnabled={false}
+        />
+      )}
+
+      <PaginationBar
+        page={page}
+        totalPages={totalPages}
+        onPrev={() => setPage((p) => Math.max(1, p - 1))}
+        onNext={() => setPage((p) => Math.min(totalPages, p + 1))}
+      />
 
       <UserFormModal
         visible={modalVisible}
@@ -277,81 +214,63 @@ export default function UsersAdminScreen({ onBack }: Props) {
         submitLabel={editingUser ? 'Guardar cambios' : 'Crear usuario'}
         defaultRoleId={defaultRoleId}
       />
-    </View>
+    </ScrollView>
   );
 }
 
-const buildStyles = (c: Palette) => StyleSheet.create({
-  scroll: { padding: 24, paddingTop: 48 },
-  header: { marginBottom: 16 },
-  toolbar: { flexDirection: 'row', gap: 8, marginBottom: 16 },
-  searchInput: { flex: 1, marginBottom: 0 },
-  loader: { marginTop: 40 },
-  empty: { color: c.textMuted, textAlign: 'center', marginTop: 40 },
-  row: {
-    backgroundColor: c.surface,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  userInfo: { flex: 1 },
-  userName: { color: c.text, fontSize: 16, fontWeight: '700' },
-  meTag: { color: c.accent, fontSize: 12, fontWeight: '400' },
-  userEmail: { color: c.textSecondary, fontSize: 13, marginTop: 2 },
-  rolesRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8, alignItems: 'center' },
-  roleBadge: {
-    backgroundColor: c.primarySoft,
-    borderRadius: 9999,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-  },
-  roleBadgeText: { color: c.primary, fontSize: 11, fontWeight: '600' },
-  verified: { fontSize: 12 },
-  unverified: { fontSize: 12 },
-  actions: { flexDirection: 'row', gap: 8 },
-  iconBtn: {
-    backgroundColor: c.surface2,
-    borderRadius: 8,
-    padding: 8,
-    minWidth: 40,
-    alignItems: 'center',
-  },
-  deleteBtn: { backgroundColor: 'rgba(220, 53, 69, 0.15)' },
-  iconBtnText: { fontSize: 16 },
-  pagination: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 16,
-    gap: 8,
-  },
-  pageBtn: { flex: 1 },
-  pageInfo: { color: c.textSecondary, fontSize: 13 },
-  rowDeleted: { opacity: 0.5, backgroundColor: 'rgba(220, 53, 69, 0.1)' },
-  deletedBadge: {
-    backgroundColor: colors.status.danger,
-    color: '#FFFFFF',
-    fontSize: 10,
-    fontWeight: '700',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 4,
-    marginLeft: 8,
-  },
-  checkboxWrap: { flexDirection: 'row', alignItems: 'center', gap: 6, marginRight: 4 },
-  checkbox: {
-    width: 20,
-    height: 20,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: c.border,
-    backgroundColor: c.surface2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checkboxOn: { backgroundColor: c.primary, borderColor: c.primary },
-  checkmark: { color: '#FFFFFF', fontSize: 13, fontWeight: '700' },
-  checkboxLabel: { color: c.textSecondary, fontSize: 12, fontWeight: '600' },  
-});
+const buildStyles = (c: Palette) =>
+  StyleSheet.create({
+    scroll: { padding: 24, paddingTop: 16 },
+    loader: { marginTop: 40 },
+    row: {
+      backgroundColor: c.surface,
+      borderRadius: 12,
+      padding: 16,
+      marginBottom: 12,
+      flexDirection: 'row',
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: c.border,
+    },
+    rowDeleted: { opacity: 0.5, backgroundColor: 'rgba(220, 53, 69, 0.1)' },
+    userInfo: { flex: 1 },
+    userName: { color: c.text, fontSize: 16, fontWeight: '700' },
+    meTag: { color: c.accent, fontSize: 12, fontWeight: '400' },
+    userEmail: { color: c.textSecondary, fontSize: 13, marginTop: 2 },
+    rolesRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8, alignItems: 'center' },
+    roleBadge: {
+      backgroundColor: c.primarySoft,
+      borderRadius: 9999,
+      paddingHorizontal: 10,
+      paddingVertical: 3,
+    },
+    roleBadgeText: { color: c.primary, fontSize: 11, fontWeight: '600' },
+    verified: { fontSize: 12 },
+    unverified: { fontSize: 12 },
+    deletedBadge: {
+      backgroundColor: colors.status.danger,
+      color: '#FFFFFF',
+      fontSize: 10,
+      fontWeight: '700',
+      paddingHorizontal: 8,
+      paddingVertical: 2,
+      borderRadius: 4,
+      marginLeft: 8,
+      alignSelf: 'flex-start',
+      marginTop: 6,
+    },
+    checkboxWrap: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    checkbox: {
+      width: 20,
+      height: 20,
+      borderRadius: 6,
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.surface2,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    checkboxOn: { backgroundColor: c.primary, borderColor: c.primary },
+    checkmark: { color: '#FFFFFF', fontSize: 13, fontWeight: '700' },
+    checkboxLabel: { color: c.textSecondary, fontSize: 12, fontWeight: '600' },
+  });
