@@ -75,6 +75,11 @@ export class UpdateGroupDto {
 // GET /groups — paginación
 // ---------------------------------------------------------
 export class QueryGroupsDto {
+  @ApiPropertyOptional({ example: 'rock' })
+  @IsOptional()
+  @IsString()
+  search?: string;
+
   @ApiPropertyOptional({ example: 1, default: 1 })
   @IsOptional()
   @Type(() => Number)

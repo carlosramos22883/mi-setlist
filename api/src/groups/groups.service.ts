@@ -18,6 +18,8 @@ import {
   UpdateMemberRoleDto,
 } from './dto/group.dto';
 import { randomBytes } from 'node:crypto';
+import type { Group } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class GroupsService {
@@ -58,9 +60,16 @@ export class GroupsService {
     const page = query.page ?? 1;
     const limit = query.limit ?? 10;
 
+    // 🆕 Tipo correcto generado por Prisma para filtros de Group
+    const groupFilter: Prisma.GroupWhereInput = { deletedAt: null };
+    if (query.search) {
+      groupFilter.name = { contains: query.search, mode: 'insensitive' };
+    }
+    const where = { userId, group: groupFilter };
+
     const [memberships, total] = await Promise.all([
       this.prisma.groupMember.findMany({
-        where: { userId, group: { deletedAt: null } },
+        where,
         include: {
           group: {
             include: {
@@ -73,13 +82,13 @@ export class GroupsService {
         orderBy: { joinedAt: 'desc' },
       }),
       this.prisma.groupMember.count({
-        where: { userId, group: { deletedAt: null } },
+        where,
       }),
     ]);
 
     const data = memberships.map((m) => ({
       ...this.formatGroup(m.group),
-      myRole: m.role, // el rol del usuario en este grupo
+      myRole: m.role,
       memberCount: m.group._count.members,
     }));
 
@@ -202,7 +211,9 @@ export class GroupsService {
       where: { groupId, email: dto.email, status: 'pending' },
     });
     if (existingInvitation) {
-      throw new ConflictException('Ya existe una invitación pendiente para ese correo');
+      throw new ConflictException(
+        'Ya existe una invitación pendiente para ese correo',
+      );
     }
 
     // Crear invitación con token
@@ -356,7 +367,7 @@ export class GroupsService {
   // ---------------------------------------------------------
   // Helper: formatear grupo para respuesta
   // ---------------------------------------------------------
-  private formatGroup(group: any) {
+  private formatGroup(group: Group) {
     return {
       id: group.id,
       name: group.name,
