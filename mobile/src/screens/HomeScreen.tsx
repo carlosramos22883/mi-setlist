@@ -7,11 +7,9 @@
 import React from 'react';
 import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '../context/AuthContext';
-import { colors } from '../constants/theme';
-import { globalStyles } from '../styles/global';
+import { colors, type Palette } from '../constants/theme';
+import { useTheme } from '../context/ThemeContext';
 import type { ScreenName } from '../navigation/useNavigation';
-
-const c = colors.dark;
 
 interface Props {
   onNavigate: (to: ScreenName) => void;
@@ -19,6 +17,9 @@ interface Props {
 
 export default function HomeScreen({ onNavigate }: Props) {
   const { user, logout, can } = useAuth();
+
+  const { c, g: globalStyles } = useTheme();
+  const styles = buildStyles(c);
 
   return (
     <ScrollView style={globalStyles.screen} contentContainerStyle={styles.scroll}>
@@ -79,8 +80,7 @@ export default function HomeScreen({ onNavigate }: Props) {
     </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
+const buildStyles = (c: Palette) => StyleSheet.create({
   scroll: { padding: 24, paddingTop: 48 },
   logo: { width: 96, height: 96, alignSelf: 'center' },
   section: {

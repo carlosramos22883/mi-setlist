@@ -57,3 +57,6 @@ export const colors = {
     infoDark: '#60A5FA',
   },
 } as const; // "as const" = valores inmutables y tipados al máximo
+// DESPUÉS: mismas claves que la paleta oscura, pero valores ampliados a string,
+// para que TANTO colors.light como colors.dark sean una Palette válida.
+export type Palette = { [K in keyof typeof colors.dark]: string };

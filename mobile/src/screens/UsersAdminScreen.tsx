@@ -14,11 +14,9 @@ import { useAuth } from '../context/AuthContext';
 import * as UsersService from '../services/users.service';
 import type { AdminUser } from '../services/users.service';
 import * as RolesService from '../services/roles.service';
-import { colors } from '../constants/theme';
-import { globalStyles } from '../styles/global';
+import { colors, type Palette } from '../constants/theme';
+import { useTheme } from '../context/ThemeContext';
 import UserFormModal from '../components/UserFormModal';
-
-const c = colors.dark;
 
 interface Props {
   onBack: () => void;
@@ -26,6 +24,9 @@ interface Props {
 
 export default function UsersAdminScreen({ onBack }: Props) {
   const { can, user: currentUser } = useAuth();
+
+  const { c, g: globalStyles } = useTheme();
+  const styles = buildStyles(c);
 
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [search, setSearch] = useState('');
@@ -280,7 +281,7 @@ export default function UsersAdminScreen({ onBack }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const buildStyles = (c: Palette) => StyleSheet.create({
   scroll: { padding: 24, paddingTop: 48 },
   header: { marginBottom: 16 },
   toolbar: { flexDirection: 'row', gap: 8, marginBottom: 16 },

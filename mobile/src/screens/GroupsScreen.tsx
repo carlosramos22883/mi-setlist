@@ -16,11 +16,10 @@ import {
 import { useAuth } from '../context/AuthContext';
 import * as GroupsService from '../services/groups.service';
 import type { Group } from '../services/groups.service';
-import { colors } from '../constants/theme';
-import { globalStyles } from '../styles/global';
+import { colors, type Palette } from '../constants/theme';
+import { useTheme } from '../context/ThemeContext';
 import { showAlert } from '../utils/dialogs';
 
-const c = colors.dark;
 const API_URL = 'http://localhost:3000/api/v1';
 
 interface Props {
@@ -42,6 +41,8 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 export default function GroupsScreen({ onNavigate }: Props) {
+  const { c, g: globalStyles } = useTheme();
+  const styles = buildStyles(c);
   const { can } = useAuth();
   const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(false);
@@ -166,7 +167,7 @@ export default function GroupsScreen({ onNavigate }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const buildStyles = (c: Palette) => StyleSheet.create({
   scroll: { padding: 24, paddingTop: 48, paddingBottom: 80 },
   header: { marginBottom: 16 },
   loader: { marginTop: 40 },

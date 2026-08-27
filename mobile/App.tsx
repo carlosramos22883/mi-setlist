@@ -3,7 +3,7 @@
 // ============================================================
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Platform, StyleSheet, View, Text, TouchableOpacity } from 'react-native';
+import { ActivityIndicator, Platform, StyleSheet, View } from 'react-native';
 import * as Linking from 'expo-linking';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import AuthScreen from './src/screens/AuthScreen';
@@ -18,6 +18,8 @@ import RolesAdminScreen from './src/screens/RolesAdminScreen';
 import GroupsScreen from './src/screens/GroupsScreen';
 import CreateGroupScreen from './src/screens/CreateGroupScreen';
 import GroupDetailScreen from './src/screens/GroupDetailScreen';
+import { ThemeProvider } from './src/context/ThemeContext';
+import AppShell from './src/components/AppShell';
 
 function Root() {
   const { user, loading } = useAuth();
@@ -25,6 +27,21 @@ function Root() {
   const [hasResetToken, setHasResetToken] = useState(false);
 
   // (el useEffect que detecta ?token= queda IGUAL que antes)
+  useEffect(() => {
+    (async () => {
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('token') && window.location.pathname.includes('reset-password')) {
+          setHasResetToken(true);
+        }
+      } else {
+        const url = await Linking.getInitialURL();
+        if (url?.includes('reset-password') && url.includes('token=')) {
+          setHasResetToken(true);
+        }
+      }
+    })();
+  }, []);
 
   if (loading) {
     return (
@@ -35,37 +52,31 @@ function Root() {
   }
 
   // ---------- USUARIO LOGUEADO ----------
-  if (user) {
+    if (user) {
+    let content;
     switch (screen) {
       case 'profile':
-        return <ProfileScreen onBack={() => navigate('home')} />;
+        content = <ProfileScreen onBack={() => navigate('home')} />;
+        break;
       case 'usersAdmin':
-        return <UsersAdminScreen onBack={() => navigate('home')} />;
+        content = <UsersAdminScreen onBack={() => navigate('home')} />;
+        break;
       case 'rolesAdmin':
-        return <RolesAdminScreen onBack={() => navigate('home')} />;   
+        content = <RolesAdminScreen onBack={() => navigate('home')} />;
+        break;
       case 'groups':
-        return (
-          <GroupsScreen
-            onNavigate={(to, p) => navigate(to as any, p)}
-          />
-        );
+        content = <GroupsScreen onNavigate={(to, p) => navigate(to as ScreenName, p)} />;
+        break;
       case 'createGroup':
-        return (
-          <CreateGroupScreen
-            onBack={() => navigate('groups')}
-            onCreated={() => navigate('groups')}
-          />
-        );
+        content = <CreateGroupScreen onBack={() => navigate('groups')} onCreated={() => navigate('groups')} />;
+        break;
       case 'groupDetail':
-        return (
-          <GroupDetailScreen
-            groupId={params.groupId}
-            onBack={() => navigate('groups')}
-          />
-        );  
+        content = <GroupDetailScreen groupId={params.groupId} onBack={() => navigate('groups')} />;
+        break;
       default:
-        return <HomeScreen onNavigate={navigate} />;
+        content = <HomeScreen onNavigate={navigate} />;
     }
+    return <AppShell screen={screen} navigate={navigate}>{content}</AppShell>;
   }
 
   // ---------- NO LOGUEADO ----------
@@ -93,15 +104,17 @@ function cleanWebUrl() {
   }
 }
 
-export default function App() {
-  return (
-    <AuthProvider>
-      <Root />
-      <StatusBar style="light" />
-    </AuthProvider>
-  );
-}
-
 const styles = StyleSheet.create({
   loading: { flex: 1, backgroundColor: colors.dark.bg, alignItems: 'center', justifyContent: 'center' },
 });
+
+export default function App() {
+  return (
+    <ThemeProvider>
+      <AuthProvider>
+        <Root />
+        <StatusBar style="light" />
+      </AuthProvider>
+    </ThemeProvider>
+  );
+}

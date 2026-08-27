@@ -4,9 +4,8 @@
 // Lo reutilizamos en: AuthScreen, ResetPasswordScreen
 import React, { useState } from 'react';
 import { StyleSheet, Text, TextInput, TouchableOpacity, View, type TextInputProps } from 'react-native';
-import { colors } from '../constants/theme';
-
-const c = colors.dark;
+import { colors, type Palette } from '../constants/theme';
+import { useTheme } from '../context/ThemeContext';
 
 interface Props extends TextInputProps {
   label?: string;
@@ -16,6 +15,9 @@ interface Props extends TextInputProps {
 export default function PasswordInput({ label, error, style, ...inputProps }: Props) {
   // Estado local del ojito: cuando es true, se ve el texto plano
   const [visible, setVisible] = useState(false);
+
+  const { c, g: globalStyles } = useTheme();
+  const styles = buildStyles(c);
 
   return (
     <View style={styles.wrapper}>
@@ -48,7 +50,7 @@ export default function PasswordInput({ label, error, style, ...inputProps }: Pr
   );
 }
 
-const styles = StyleSheet.create({
+const buildStyles = (c: Palette) => StyleSheet.create({
   wrapper: { marginBottom: 12 },
   label: { color: c.textSecondary, fontSize: 12, marginBottom: 4, marginLeft: 4 },
   box: {

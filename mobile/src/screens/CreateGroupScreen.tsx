@@ -14,11 +14,10 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as GroupsService from '../services/groups.service';
-import { colors } from '../constants/theme';
-import { globalStyles } from '../styles/global';
+import { colors, type Palette } from '../constants/theme';
+import { useTheme } from '../context/ThemeContext';
 import { showAlert } from '../utils/dialogs';
 
-const c = colors.dark;
 const API_URL = 'http://localhost:3000/api/v1';
 
 interface Props {
@@ -37,6 +36,8 @@ const GROUP_TYPES = [
 type GroupType = (typeof GROUP_TYPES)[number]['value'];
 
 export default function CreateGroupScreen({ onBack, onCreated }: Props) {
+  const { c, g: globalStyles } = useTheme();
+  const styles = buildStyles(c);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [type, setType] = useState<GroupType>('band');
@@ -201,7 +202,7 @@ export default function CreateGroupScreen({ onBack, onCreated }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const buildStyles = (c: Palette) => StyleSheet.create({
   scroll: { padding: 24, paddingTop: 48 },
   header: { marginBottom: 16 },
   logoSection: { alignItems: 'center', marginBottom: 20 },

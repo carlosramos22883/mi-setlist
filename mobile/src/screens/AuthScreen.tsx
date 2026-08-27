@@ -8,11 +8,10 @@ import {
   StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
-import { colors } from '../constants/theme';
-import { globalStyles } from '../styles/global';
+import { colors, type Palette } from '../constants/theme';
+import { useTheme } from '../context/ThemeContext';
 import PasswordInput from '../components/PasswordInput';
-
-const c = colors.dark;
+import ThemeToggle from '../components/ThemeToggle';
 
 interface Props {
   onForgot: () => void; // callback para ir a la pantalla de "olvidé"
@@ -23,6 +22,9 @@ type FieldErrors = Record<string, string>;
 
 export default function AuthScreen({ onForgot }: Props) {
   const { login, register } = useAuth();
+
+  const { c, g: globalStyles } = useTheme();
+  const styles = buildStyles(c);
 
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [name, setName] = useState('');
@@ -81,8 +83,9 @@ export default function AuthScreen({ onForgot }: Props) {
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={globalStyles.screen}>
+      <ThemeToggle floating />
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-        {/* LOGO (ya no el emoji 🎵) */}
+        {/* LOGO */}
         <Image
           source={require('../../assets/logo.png')}
           style={styles.logo}
@@ -172,7 +175,7 @@ export default function AuthScreen({ onForgot }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const buildStyles = (c: Palette) => StyleSheet.create({
   scroll: { flexGrow: 1, justifyContent: 'center', padding: 24 },
   logo: { width: 120, height: 120, alignSelf: 'center', marginBottom: 8 },
   field: { marginBottom: 4 },

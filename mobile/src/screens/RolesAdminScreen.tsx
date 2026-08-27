@@ -9,11 +9,9 @@ import {
 import { useAuth } from '../context/AuthContext';
 import * as RolesService from '../services/roles.service';
 import type { Role, Permission } from '../services/roles.service';
-import { colors } from '../constants/theme';
-import { globalStyles } from '../styles/global';
+import { colors, type Palette } from '../constants/theme';
+import { useTheme } from '../context/ThemeContext';
 import { confirmAction, showAlert } from '../utils/dialogs';
-
-const c = colors.dark;
 
 const GROUP_LABELS: Record<string, string> = {
   users: 'Usuarios',
@@ -27,6 +25,9 @@ interface Props {
 
 export default function RolesAdminScreen({ onBack }: Props) {
   const { can } = useAuth();
+
+  const { c, g: globalStyles } = useTheme();
+  const styles = buildStyles(c);
 
   const [roles, setRoles] = useState<Role[]>([]);
   const [permissions, setPermissions] = useState<Record<string, Permission[]>>({});
@@ -364,7 +365,7 @@ export default function RolesAdminScreen({ onBack }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const buildStyles = (c: Palette) => StyleSheet.create({
   loadingWrap: { alignItems: 'center', justifyContent: 'center' },
   scroll: { padding: 24, paddingTop: 48 },
   header: { marginBottom: 16 },

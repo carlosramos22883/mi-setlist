@@ -8,11 +8,9 @@ import {
   ActivityIndicator, Modal, ScrollView, StyleSheet, Text, TextInput,
   TouchableOpacity, View,
 } from 'react-native';
-import { colors } from '../constants/theme';
-import { globalStyles } from '../styles/global';
+import { colors, type Palette } from '../constants/theme';
+import { useTheme } from '../context/ThemeContext';
 import * as RolesService from '../services/roles.service';
-
-const c = colors.dark;
 
 interface Props {
   visible: boolean;
@@ -45,6 +43,9 @@ export default function UserFormModal({
   defaultRoleId,
 }: Props) {
   const isEdit = !!initialUser;
+
+  const { c, g: globalStyles } = useTheme();
+  const styles = buildStyles(c);
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -225,7 +226,7 @@ export default function UserFormModal({
   );
 }
 
-const styles = StyleSheet.create({
+const buildStyles = (c: Palette) => StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.6)',

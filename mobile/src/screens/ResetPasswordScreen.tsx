@@ -8,11 +8,10 @@ import {
 } from 'react-native';
 import * as Linking from 'expo-linking';
 import * as AuthService from '../services/auth.service';
-import { colors } from '../constants/theme';
-import { globalStyles } from '../styles/global';
+import { colors, type Palette } from '../constants/theme';
+import { useTheme } from '../context/ThemeContext';
 import PasswordInput from '../components/PasswordInput';
-
-const c = colors.dark;
+import ThemeToggle from '../components/ThemeToggle';
 
 interface Props {
   onSuccess: () => void; // vuelve al login cuando termina ok
@@ -20,6 +19,10 @@ interface Props {
 }
 
 export default function ResetPasswordScreen({ onSuccess, onBack }: Props) {
+  
+  const { c, g: globalStyles } = useTheme();
+  const styles = buildStyles(c);
+
   const [token, setToken] = useState<string | null>(null);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -78,6 +81,7 @@ export default function ResetPasswordScreen({ onSuccess, onBack }: Props) {
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={globalStyles.screen}>
+      <ThemeToggle floating />
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
         <Image source={require('../../assets/logo.png')} style={styles.logo} resizeMode="contain" />
         <Text style={globalStyles.title}>Nueva contraseña</Text>
@@ -131,7 +135,7 @@ export default function ResetPasswordScreen({ onSuccess, onBack }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const buildStyles = (c: Palette) => StyleSheet.create({
   scroll: { flexGrow: 1, justifyContent: 'center', padding: 24 },
   logo: { width: 120, height: 120, alignSelf: 'center', marginBottom: 8 },
   generalError: {

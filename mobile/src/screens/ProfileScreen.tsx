@@ -10,11 +10,9 @@ import {
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import * as UsersService from '../services/users.service';
-import { colors } from '../constants/theme';
-import { globalStyles } from '../styles/global';
+import { colors, type Palette } from '../constants/theme';
+import { useTheme } from '../context/ThemeContext';
 import PasswordInput from '../components/PasswordInput';
-
-const c = colors.dark;
 
 interface Props {
   onBack: () => void;
@@ -22,6 +20,9 @@ interface Props {
 
 export default function ProfileScreen({ onBack }: Props) {
   const { user, logout, reloadUser } = useAuth();
+
+  const { c, g: globalStyles } = useTheme();
+  const styles = buildStyles(c);
 
   // Estado inicial = los datos actuales del usuario
   const [name, setName] = useState(user?.name ?? '');
@@ -129,7 +130,7 @@ export default function ProfileScreen({ onBack }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const buildStyles = (c: Palette) => StyleSheet.create({
   scroll: { padding: 24, paddingTop: 48 },
   inputError: { borderColor: colors.status.dangerDark },
   error: { color: colors.status.dangerDark, fontSize: 12, marginBottom: 8 },

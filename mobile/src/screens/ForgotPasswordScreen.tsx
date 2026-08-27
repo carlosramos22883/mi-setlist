@@ -7,16 +7,17 @@ import {
   StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import * as AuthService from '../services/auth.service';
-import { colors } from '../constants/theme';
-import { globalStyles } from '../styles/global';
-
-const c = colors.dark;
+import { colors, type Palette } from '../constants/theme';
+import { useTheme } from '../context/ThemeContext';
+import ThemeToggle from '../components/ThemeToggle';
 
 interface Props {
   onBack: () => void;
 }
 
 export default function ForgotPasswordScreen({ onBack }: Props) {
+  const { c, g: globalStyles } = useTheme();
+  const styles = buildStyles(c);
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -37,6 +38,7 @@ export default function ForgotPasswordScreen({ onBack }: Props) {
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={globalStyles.screen}>
+      <ThemeToggle floating />
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
         <Image source={require('../../assets/logo.png')} style={styles.logo} resizeMode="contain" />
         <Text style={globalStyles.title}>Recuperar contraseña</Text>
@@ -85,7 +87,7 @@ export default function ForgotPasswordScreen({ onBack }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const buildStyles = (c: Palette) => StyleSheet.create({
   scroll: { flexGrow: 1, justifyContent: 'center', padding: 24 },
   logo: { width: 120, height: 120, alignSelf: 'center', marginBottom: 8 },
   inputError: { borderColor: colors.status.dangerDark },

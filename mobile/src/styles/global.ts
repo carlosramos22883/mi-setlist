@@ -4,11 +4,10 @@
 // Estilos reutilizables por TODAS las pantallas.
 // Si mañana cambias el botón, lo cambias AQUÍ y toda la app se actualiza.
 import { StyleSheet } from 'react-native';
-import { colors } from '../constants/theme';
+import { colors, type Palette } from '../constants/theme';
 
-const c = colors.dark; // más adelante: dinámico según modo claro/oscuro
-
-export const globalStyles = StyleSheet.create({
+export const buildGlobalStyles = (c: Palette) =>
+  StyleSheet.create({
   // --- Layout ---
   screen: { flex: 1, backgroundColor: c.bg },
   centered: { alignItems: 'center', justifyContent: 'center', padding: 24 },
@@ -57,3 +56,5 @@ export const globalStyles = StyleSheet.create({
   badge: { backgroundColor: c.primarySoft, borderRadius: 9999, paddingHorizontal: 14, paddingVertical: 6 },
   badgeText: { color: c.primary, fontSize: 12, fontWeight: '600' },
 });
+// Compatibilidad: pantallas aún no migradas siguen usando el dark
+export const globalStyles = buildGlobalStyles(colors.dark);
