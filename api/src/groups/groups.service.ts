@@ -40,12 +40,19 @@ export class GroupsService {
         logoPath: dto.logoPath,
         ownerId: userId,
         members: {
-          create: { userId, role: 'owner' },
+          create: {
+            userId: userId,
+            role: 'owner',
+          },
         },
       },
       include: {
         members: {
-          include: { user: { select: { id: true, name: true, email: true } } },
+          include: {
+            user: {
+              select: { id: true, name: true, email: true },
+            },
+          },
         },
       },
     });

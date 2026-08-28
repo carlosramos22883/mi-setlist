@@ -1,9 +1,6 @@
 // ============================================================
-// GROUPS CONTROLLER — endpoints de gestión de grupos
+// GROUPS CONTROLLER — endpoints del CRUD de grupos
 // ============================================================
-// NOTA: estos endpoints NO usan el RBAC global (users.*, roles.*).
-// Los permisos aquí son CONTEXTUALES: ¿qué rol tienes en ESTE grupo?
-// El guard de membresía valida pertenencia y rol en cada request.
 import {
   Body,
   Controller,
@@ -15,10 +12,12 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import type { JwtPayload } from '../auth/jwt-payload';
+import { Permissions } from '../common/decorators/permissions.decorator';
+import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { GroupsService } from './groups.service';
 import {
   CreateGroupDto,
@@ -29,80 +28,81 @@ import {
 } from './dto/group.dto';
 
 @ApiTags('groups')
-@ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
 @Controller('groups')
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 export class GroupsController {
-  constructor(private readonly groups: GroupsService) {}
+  constructor(private readonly groupsService: GroupsService) {}
 
-  // POST /groups — crear grupo
   @Post()
+  @Permissions('groups.create')
   create(@CurrentUser() user: JwtPayload, @Body() dto: CreateGroupDto) {
-    return this.groups.create(user.sub, dto);
+    return this.groupsService.create(user.sub, dto);
   }
 
-  // GET /groups — listar mis grupos
   @Get()
-  list(@CurrentUser() user: JwtPayload, @Query() query: QueryGroupsDto) {
-    return this.groups.listMyGroups(user.sub, query);
+  @Permissions('groups.view')
+  listMyGroups(
+    @CurrentUser() user: JwtPayload,
+    @Query() query: QueryGroupsDto,
+  ) {
+    return this.groupsService.listMyGroups(user.sub, query);
   }
 
-  // GET /groups/:id — detalle del grupo
   @Get(':id')
+  @Permissions('groups.view')
   findOne(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
-    return this.groups.findOne(id, user.sub);
+    return this.groupsService.findOne(id, user.sub);
   }
 
-  // PATCH /groups/:id — editar grupo
   @Patch(':id')
+  @Permissions('groups.edit')
   update(
     @Param('id') id: string,
     @CurrentUser() user: JwtPayload,
     @Body() dto: UpdateGroupDto,
   ) {
-    return this.groups.update(id, user.sub, dto);
+    return this.groupsService.update(id, user.sub, dto);
   }
 
-  // DELETE /groups/:id — eliminar grupo
   @Delete(':id')
+  @Permissions('groups.delete')
   remove(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
-    return this.groups.remove(id, user.sub);
+    return this.groupsService.remove(id, user.sub);
   }
 
-  // POST /groups/:id/members — invitar usuario
   @Post(':id/members')
+  @Permissions('members.invite')
   inviteMember(
     @Param('id') id: string,
     @CurrentUser() user: JwtPayload,
     @Body() dto: InviteMemberDto,
   ) {
-    return this.groups.inviteMember(id, user.sub, dto);
+    return this.groupsService.inviteMember(id, user.sub, dto);
   }
 
-  // PATCH /groups/:id/members/:memberId — cambiar rol
   @Patch(':id/members/:memberId')
+  @Permissions('members.change_role')
   updateMemberRole(
     @Param('id') id: string,
     @Param('memberId') memberId: string,
     @CurrentUser() user: JwtPayload,
     @Body() dto: UpdateMemberRoleDto,
   ) {
-    return this.groups.updateMemberRole(id, user.sub, memberId, dto);
+    return this.groupsService.updateMemberRole(id, user.sub, memberId, dto);
   }
 
-  // DELETE /groups/:id/members/:memberId — expulsar miembro
   @Delete(':id/members/:memberId')
+  @Permissions('members.remove')
   removeMember(
     @Param('id') id: string,
     @Param('memberId') memberId: string,
     @CurrentUser() user: JwtPayload,
   ) {
-    return this.groups.removeMember(id, user.sub, memberId);
+    return this.groupsService.removeMember(id, user.sub, memberId);
   }
 
-  // POST /groups/:id/leave — abandonar grupo
   @Post(':id/leave')
   leaveGroup(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
-    return this.groups.leaveGroup(id, user.sub);
+    return this.groupsService.leaveGroup(id, user.sub);
   }
 }
