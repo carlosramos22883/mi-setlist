@@ -3,7 +3,7 @@
 // ============================================================
 // Cualquier pantalla puede usar useAuth() para saber quién es el
 // usuario, loguearlo, registrarlo o desloguearlo.
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import * as AuthService from '../services/auth.service';
 import type { AuthUser } from '../services/auth.service';
@@ -16,7 +16,7 @@ interface AuthContextValue {
   register: (name: string, email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   can: (permission: string) => boolean;
-  reloadUser: () => Promise<void>;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -88,13 +88,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return user?.permissions?.includes(permission) ?? false;
   }
 
+  // 🆕 Re-lee /auth/me y actualiza el user global
+  // (nombre, avatar, correo...) sin cerrar sesión.
+  const refreshUser = useCallback(async () => {
+    try {
+      const fresh = await AuthService.me();
+      setUser(fresh);
+    } catch {
+      // si falla, conservamos el user actual
+    }
+  }, []);
+
   // Vuelve a pedir /auth/me (tras editar el perfil, por ejemplo)
   async function reloadUser() {
     setUser(await AuthService.me());
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, can, reloadUser }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, can, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

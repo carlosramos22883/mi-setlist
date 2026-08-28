@@ -9,6 +9,7 @@ export interface AuthUser {
   name: string;
   email: string;
   emailVerifiedAt: string | null;
+  avatarPath: string | null;
   createdAt: string;
   updatedAt: string;
   roles: string[];
@@ -63,5 +64,11 @@ export async function forgotPassword(email: string) {
 // POST /auth/reset-password — usa el token del correo
 export async function resetPassword(token: string, password: string) {
   const { data } = await api.post<{ message: string }>('/auth/reset-password', { token, password });
+  return data;
+}
+
+// PATCH /users/me — perfil propio
+export async function updateProfile(payload: { name?: string; email?: string; password?: string; avatarPath?: string; }) {
+  const { data } = await api.patch<{ message: string }>('/users/me', payload);
   return data;
 }

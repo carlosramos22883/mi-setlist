@@ -3,6 +3,7 @@
 // ============================================================
 import { Platform } from 'react-native';
 import { api } from './api';
+import { uploadImage } from './uploads.service';
 
 export interface GroupMember {
   id: string;
@@ -117,26 +118,5 @@ export async function leaveGroup(groupId: string) {
 
 // POST /uploads/image — sube el logo (funciona en web y en móvil)
 export async function uploadLogo(localUri: string): Promise<string> {
-  const formData = new FormData();
-
-  if (Platform.OS === 'web') {
-    // En web el picker devuelve data/blob URL → lo convertimos a Blob
-    const res = await fetch(localUri);
-    const blob = await res.blob();
-    const filename = localUri.split('/').pop()?.split('?')[0] || 'logo.jpg';
-    formData.append('file', blob, filename);
-  } else {
-    // En móvil nativo, RN entiende { uri, name, type }
-    const filename = localUri.split('/').pop() ?? 'logo.jpg';
-    formData.append('file', {
-      uri: localUri,
-      name: filename,
-      type: 'image/jpeg',
-    } as any);
-  }
-
-  const { data } = await api.post<{ path: string }>('/uploads/image', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  });
-  return data.path;
+  return uploadImage(localUri);
 }

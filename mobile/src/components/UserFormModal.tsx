@@ -1,16 +1,21 @@
 // ============================================================
-// USER FORM MODAL — formulario reutilizable para crear/editar
+// USER FORM MODAL — crear/editar usuario con avatar redondo
 // ============================================================
-// Lo usamos tanto para CREAR (con contraseña obligatoria)
-// como para EDITAR (contraseña opcional, roles preseleccionados).
 import React, { useEffect, useState } from 'react';
-import {
-  ActivityIndicator, Modal, ScrollView, StyleSheet, Text, TextInput,
-  TouchableOpacity, View,
-} from 'react-native';
-import { colors, type Palette } from '../constants/theme';
-import { useTheme } from '../context/ThemeContext';
+import { Image, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
+import * as UsersService from '../services/users.service';
 import * as RolesService from '../services/roles.service';
+import { uploadImage } from '../services/uploads.service';
+import { validatePickedImage } from '../utils/imageValidation';
+import FormModal from './FormModal';
+import ImageCropModal from './ImageCropModal';
+import { useTheme } from '../context/ThemeContext';
+import type { Palette } from '../constants/theme';
+import { API_URL } from '../constants/config';
+import { showAlert } from '../utils/dialogs';
+import PasswordInput from './PasswordInput';
 
 interface Props {
   visible: boolean;
@@ -20,16 +25,11 @@ interface Props {
     email: string;
     password: string;
     roleIds: string[];
+    avatarPath?: string;
   }) => Promise<void>;
-  // Si viene null, es modo "crear"; si viene un usuario, es modo "editar"
-  initialUser?: {
-    name: string;
-    email: string;
-    roles: { id: string; name: string }[];
-  } | null;
+  initialUser?: any;
   title: string;
   submitLabel: string;
-  // ID del rol "Usuario" para preseleccionarlo al crear
   defaultRoleId?: string | null;
 }
 
@@ -42,236 +42,272 @@ export default function UserFormModal({
   submitLabel,
   defaultRoleId,
 }: Props) {
-  const isEdit = !!initialUser;
-
-  const { c, g: globalStyles } = useTheme();
-  const styles = buildStyles(c);
+  const { c } = useTheme();
+  const s = buildStyles(c);
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [selectedRoleIds, setSelectedRoleIds] = useState<string[]>([]);
-
-  const [roles, setRoles] = useState<RolesService.Role[]>([]);
+  const [roleIds, setRoleIds] = useState<string[]>([]);
+  const [avatarLocalUri, setAvatarLocalUri] = useState<string | null>(null);
+  const [pendingCropUri, setPendingCropUri] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [loading, setLoading] = useState(false);
-  const [loadingRoles, setLoadingRoles] = useState(false);
 
-  // Carga los roles disponibles cuando se abre el modal
+  const [allRoles, setAllRoles] = useState<any[]>([]);
+
+  // Carga roles una sola vez
   useEffect(() => {
-    if (!visible) return;
     (async () => {
-      setLoadingRoles(true);
       try {
-        const allRoles = await RolesService.listRoles();
-        setRoles(allRoles);
-
-        // Valores iniciales: editar → datos del usuario; crear → vacío + rol Usuario
-        if (initialUser) {
-          setName(initialUser.name);
-          setEmail(initialUser.email);
-          setPassword(''); // nunca mostrar contraseña al editar
-          setSelectedRoleIds(initialUser.roles.map((r) => r.id));
-        } else {
-          setName('');
-          setEmail('');
-          setPassword('');
-          setSelectedRoleIds(defaultRoleId ? [defaultRoleId] : []);
-        }
-      } catch {
-        setErrors({ general: 'No se pudieron cargar los roles' });
-      } finally {
-        setLoadingRoles(false);
-      }
+        const roles = await RolesService.listRoles();
+        setAllRoles(roles);
+      } catch {}
     })();
+  }, []);
+
+  // Precarga al abrir
+  useEffect(() => {
+    if (visible) {
+      setName(initialUser?.name ?? '');
+      setEmail(initialUser?.email ?? '');
+      setPassword('');
+      setRoleIds(initialUser ? initialUser.roles.map((r: any) => r.id) : defaultRoleId ? [defaultRoleId] : []);
+      setAvatarLocalUri(null);
+      setPendingCropUri(null);
+      setErrors({});
+    }
   }, [visible, initialUser, defaultRoleId]);
 
-  // Toggle: agregar/quitar un rol de la selección
+  // Avatar a mostrar
+  const currentAvatarUrl = initialUser?.avatarPath
+    ? `${API_URL}/${initialUser.avatarPath}`
+    : null;
+  const previewUri = avatarLocalUri ?? currentAvatarUrl;
+
+  async function pickAvatar() {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      showAlert('Permiso requerido', 'Necesitamos acceso a tus fotos para el avatar.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: Platform.OS !== 'web',
+      aspect: Platform.OS !== 'web' ? [1, 1] : undefined,
+      quality: 0.9,
+    });
+    if (result.canceled || !result.assets?.[0]) return;
+    const asset = result.assets[0];
+
+    const validation = await validatePickedImage(asset);
+    if (!validation.ok) {
+      showAlert('Archivo no válido', validation.message ?? 'Selecciona otra imagen.');
+      return;
+    }
+
+    if (Platform.OS === 'web') setPendingCropUri(asset.uri);
+    else setAvatarLocalUri(asset.uri);
+  }
+
   function toggleRole(id: string) {
-    setSelectedRoleIds((prev) =>
-      prev.includes(id) ? prev.filter((r) => r !== id) : [...prev, id],
+    setRoleIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
   }
 
-  async function handleSubmit() {
+  async function handleSave() {
     setErrors({});
-    setLoading(true);
+    const newErrors: Record<string, string> = {};
+    if (!name.trim()) newErrors.name = 'El nombre es obligatorio';
+    if (!email.trim()) newErrors.email = 'El correo es obligatorio';
+    if (!initialUser && !password) newErrors.password = 'La contraseña es obligatoria';
+    if (roleIds.length === 0) newErrors.roles = 'Asigna al menos un rol';
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+
+    setSaving(true);
     try {
-      // Validación local: contraseña obligatoria solo al crear
-      if (!isEdit && password.trim() === '') {
-        setErrors({ password: 'La contraseña es obligatoria al crear' });
-        setLoading(false);
-        return;
-      }
+      let avatarPath = initialUser?.avatarPath ?? undefined;
+      if (avatarLocalUri) avatarPath = await uploadImage(avatarLocalUri);
 
       await onSubmit({
         name: name.trim(),
         email: email.trim(),
-        password: password, // puede venir vacía al editar
-        roleIds: selectedRoleIds,
+        password,
+        roleIds,
+        avatarPath,
       });
-
-      // Éxito: cierra y limpia
       onClose();
     } catch (e: any) {
-      const data = e?.response?.data;
+      const data = e?.response?.data ?? e;
       if (data?.fields) setErrors(data.fields);
-      else setErrors({ general: data?.message ?? 'Error al guardar' });
+      else showAlert('Error', data?.message ?? 'No se pudo guardar');
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   }
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <View style={styles.overlay}>
-        <View style={styles.modal}>
-          <ScrollView contentContainerStyle={styles.scroll}>
-            <Text style={globalStyles.title}>{title}</Text>
-
-            <View>
-              <TextInput
-                style={[globalStyles.input, errors.name ? styles.inputError : null]}
-                placeholder="Nombre"
-                placeholderTextColor={c.textMuted}
-                value={name}
-                onChangeText={(t) => { setName(t); setErrors((e) => ({ ...e, name: '' })); }}
-              />
-              {errors.name && <Text style={styles.error}>{errors.name}</Text>}
+    <>
+      <FormModal
+        visible={visible}
+        onClose={onClose}
+        title={title}
+        submitLabel={submitLabel}
+        onSubmit={handleSave}
+        loading={saving}
+      >
+        {/* Avatar con botón de cámara */}
+        <View style={s.avatarSection}>
+          <View style={s.avatarWrap}>
+            <View style={s.avatarBox}>
+              {previewUri ? (
+                <Image source={{ uri: previewUri }} style={s.avatarImage} />
+              ) : (
+                <View style={s.avatarPlaceholder}>
+                  <Ionicons name="person-outline" size={40} color={c.textMuted} />
+                </View>
+              )}
             </View>
-
-            <View>
-              <TextInput
-                style={[globalStyles.input, errors.email ? styles.inputError : null]}
-                placeholder="Correo"
-                placeholderTextColor={c.textMuted}
-                autoCapitalize="none"
-                keyboardType="email-address"
-                value={email}
-                onChangeText={(t) => { setEmail(t); setErrors((e) => ({ ...e, email: '' })); }}
-              />
-              {errors.email && <Text style={styles.error}>{errors.email}</Text>}
-            </View>
-
-            <View>
-              <TextInput
-                style={[globalStyles.input, errors.password ? styles.inputError : null]}
-                placeholder={isEdit ? 'Nueva contraseña (opcional)' : 'Contraseña'}
-                placeholderTextColor={c.textMuted}
-                secureTextEntry
-                value={password}
-                onChangeText={(t) => { setPassword(t); setErrors((e) => ({ ...e, password: '' })); }}
-              />
-              {errors.password && <Text style={styles.error}>{errors.password}</Text>}
-            </View>
-
-            {/* Selector de roles */}
-            <Text style={styles.rolesLabel}>Roles</Text>
-            {loadingRoles ? (
-              <ActivityIndicator color={c.primary} />
-            ) : (
-              <View style={styles.rolesGrid}>
-                {roles.map((role) => {
-                  const isSelected = selectedRoleIds.includes(role.id);
-                  return (
-                    <TouchableOpacity
-                      key={role.id}
-                      style={[styles.roleChip, isSelected && styles.roleChipSelected]}
-                      onPress={() => toggleRole(role.id)}
-                    >
-                      <Text
-                        style={[
-                          styles.roleChipText,
-                          isSelected && styles.roleChipTextSelected,
-                        ]}
-                      >
-                        {role.name}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            )}
-            {selectedRoleIds.length === 0 && (
-              <Text style={styles.hint}>⚠️ Se asignará el rol "Usuario" por defecto</Text>
-            )}
-
-            {errors.general && <Text style={styles.generalError}>{errors.general}</Text>}
-
-            <View style={styles.actions}>
-              <TouchableOpacity
-                style={[globalStyles.buttonDanger, styles.cancelBtn]}
-                onPress={onClose}
-                disabled={loading}
-              >
-                <Text style={globalStyles.buttonText}>Cancelar</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[globalStyles.button, styles.submitBtn]}
-                onPress={handleSubmit}
-                disabled={loading}
-              >
-                {loading ? (
-                  <ActivityIndicator color="#FFFFFF" />
-                ) : (
-                  <Text style={globalStyles.buttonText}>{submitLabel}</Text>
-                )}
-              </TouchableOpacity>
-            </View>
-          </ScrollView>
+            <TouchableOpacity style={s.cameraBtn} onPress={pickAvatar}>
+              <Ionicons name="camera" size={16} color="#FFFFFF" />
+            </TouchableOpacity>
+          </View>
+          <Text style={s.avatarHint}>Toca la cámara para cambiar la foto</Text>
         </View>
-      </View>
-    </Modal>
+
+        <Text style={s.label}>Nombre</Text>
+        <TextInput
+          style={[s.input, errors.name && s.inputError]}
+          placeholder="Nombre completo"
+          placeholderTextColor={c.textMuted}
+          value={name}
+          onChangeText={(t) => { setName(t); setErrors((e) => ({ ...e, name: '' })); }}
+        />
+        {errors.name && <Text style={s.error}>{errors.name}</Text>}
+
+        <Text style={s.label}>Correo</Text>
+        <TextInput
+          style={[s.input, errors.email && s.inputError]}
+          placeholder="correo@ejemplo.com"
+          placeholderTextColor={c.textMuted}
+          value={email}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          onChangeText={(t) => { setEmail(t); setErrors((e) => ({ ...e, email: '' })); }}
+        />
+        {errors.email && <Text style={s.error}>{errors.email}</Text>}
+
+        <Text style={s.label}>Contraseña{initialUser && ' (dejar vacío para no cambiar)'}</Text>
+        <PasswordInput
+          value={password}
+          onChangeText={(t) => { setPassword(t); setErrors((e) => ({ ...e, password: '' })); }}
+          placeholder="Contraseña segura"
+          style={errors.password ? s.inputError : undefined}
+        />
+        {errors.password && <Text style={s.error}>{errors.password}</Text>}
+
+        <Text style={s.label}>Roles</Text>
+        <View style={s.rolesGrid}>
+          {allRoles.map((role) => {
+            const selected = roleIds.includes(role.id);
+            return (
+              <TouchableOpacity
+                key={role.id}
+                style={[s.roleChip, selected && s.roleChipSelected]}
+                onPress={() => toggleRole(role.id)}
+              >
+                <Text style={[s.roleChipText, selected && s.roleChipTextSelected]}>
+                  {role.name}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+        {errors.roles && <Text style={s.error}>{errors.roles}</Text>}
+      </FormModal>
+
+      {/* Cropper circular: solo existe en web */}
+      <ImageCropModal
+        visible={pendingCropUri !== null}
+        imageUri={pendingCropUri}
+        round
+        onDone={(dataUrl) => {
+          setAvatarLocalUri(dataUrl);
+          setPendingCropUri(null);
+        }}
+        onCancel={() => setPendingCropUri(null)}
+      />
+    </>
   );
 }
 
-const buildStyles = (c: Palette) => StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    justifyContent: 'center',
-    padding: 24,
-  },
-  modal: {
-    backgroundColor: c.surface,
-    borderRadius: 16,
-    maxHeight: '90%',
-  },
-  scroll: { padding: 20 },
-  inputError: { borderColor: colors.status.dangerDark },
-  error: { color: colors.status.dangerDark, fontSize: 12, marginBottom: 8 },
-  rolesLabel: {
-    color: c.textSecondary,
-    fontSize: 12,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    marginBottom: 8,
-    marginTop: 8,
-  },
-  rolesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
-  roleChip: {
-    backgroundColor: c.surface2,
-    borderRadius: 9999,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderWidth: 1,
-    borderColor: c.border,
-  },
-  roleChipSelected: {
-    backgroundColor: c.primary,
-    borderColor: c.primary,
-  },
-  roleChipText: { color: c.textSecondary, fontSize: 13, fontWeight: '600' },
-  roleChipTextSelected: { color: '#FFFFFF' },
-  hint: { color: colors.status.warningDark, fontSize: 12, marginBottom: 8 },
-  generalError: {
-    color: colors.status.dangerDark,
-    fontSize: 13,
-    textAlign: 'center',
-    marginBottom: 10,
-  },
-  actions: { flexDirection: 'row', gap: 12, marginTop: 16 },
-  cancelBtn: { flex: 1 },
-  submitBtn: { flex: 1 },
-});
+const buildStyles = (c: Palette) =>
+  StyleSheet.create({
+    avatarSection: { alignItems: 'center', marginBottom: 16 },
+    avatarWrap: { width: 110, height: 110 },
+    avatarBox: {
+      width: '100%',
+      height: '100%',
+      borderRadius: 55, // circular
+      overflow: 'hidden',
+      backgroundColor: c.surface2,
+      borderWidth: 1,
+      borderColor: c.border,
+    },
+    avatarImage: { width: '100%', height: '100%' },
+    avatarPlaceholder: {
+      width: '100%',
+      height: '100%',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    cameraBtn: {
+      position: 'absolute',
+      right: -4,
+      bottom: -4,
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: '#2563EB',
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 2,
+      borderColor: '#FFFFFF',
+    },
+    avatarHint: { color: c.textMuted, fontSize: 12, marginTop: 6 },
+    label: {
+      color: c.textSecondary,
+      fontSize: 12,
+      fontWeight: '700',
+      textTransform: 'uppercase',
+      marginBottom: 6,
+    },
+    input: {
+      backgroundColor: c.surface2,
+      borderRadius: 12,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      color: c.text,
+      marginBottom: 12,
+      borderWidth: 1,
+      borderColor: c.border,
+    },
+    inputError: { borderColor: '#F87171' },
+    error: { color: '#F87171', fontSize: 12, marginBottom: 8, marginTop: -6 },
+    rolesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
+    roleChip: {
+      backgroundColor: c.surface2,
+      borderRadius: 9999,
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+      borderWidth: 1,
+      borderColor: c.border,
+    },
+    roleChipSelected: { backgroundColor: c.primary, borderColor: c.primary },
+    roleChipText: { color: c.textSecondary, fontSize: 13, fontWeight: '600' },
+    roleChipTextSelected: { color: '#FFFFFF' },
+  });

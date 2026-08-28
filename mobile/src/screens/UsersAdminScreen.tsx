@@ -4,7 +4,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator, FlatList, RefreshControl, ScrollView,
-  StyleSheet, Text, TouchableOpacity, View,
+  StyleSheet, Text, TouchableOpacity, View, Image,
 } from 'react-native';
 import { confirmAction, showAlert } from '../utils/dialogs';
 import { useAuth } from '../context/AuthContext';
@@ -19,13 +19,14 @@ import ListToolbar from '../components/ListToolbar';
 import PaginationBar from '../components/PaginationBar';
 import EmptyState from '../components/EmptyState';
 import RowActions from '../components/RowActions';
+import { API_URL } from '../constants/config';
 
 interface Props {
   onBack: () => void;
 }
 
 export default function UsersAdminScreen({ onBack }: Props) {
-  const { can, user: currentUser } = useAuth();
+  const { can, user: currentUser, refreshUser } = useAuth();
   const { c, g: globalStyles } = useTheme();
   const styles = buildStyles(c);
 
@@ -99,15 +100,24 @@ export default function UsersAdminScreen({ onBack }: Props) {
     email: string;
     password: string;
     roleIds: string[];
+    avatarPath?: string;
   }) {
     if (editingUser) {
       const updatePayload: Record<string, unknown> = {
         name: payload.name,
         email: payload.email,
         roleIds: payload.roleIds,
+        avatarPath: payload.avatarPath,
       };
       if (payload.password !== '') updatePayload.password = payload.password;
+
       await UsersService.updateUser(editingUser.id, updatePayload);
+
+      // 🆕 Si el registro editado es el del usuario logueado,
+      // sincroniza el user global (topbar, drawer, perfil).
+      if (editingUser.id === currentUser?.id) {
+        await refreshUser();
+      }
     } else {
       await UsersService.createUser(payload);
     }
@@ -134,6 +144,7 @@ export default function UsersAdminScreen({ onBack }: Props) {
     const isMe = item.id === currentUser?.id;
     return (
       <View style={[styles.row, isDeleted && styles.rowDeleted]}>
+        {renderAvatar(item)}
         <View style={styles.userInfo}>
           <Text style={styles.userName}>
             {item.name} {isMe && <Text style={styles.meTag}>(tú)</Text>}
@@ -160,6 +171,30 @@ export default function UsersAdminScreen({ onBack }: Props) {
           canEdit={can('users.edit')}
           canDelete={can('users.delete') && !isMe}
         />
+      </View>
+    );
+  }
+
+  // Avatar circular con fallback a iniciales (como la topbar)
+  function renderAvatar(user: AdminUser, size = 48) {
+    const url = user.avatarPath ? `${API_URL}/${user.avatarPath}` : null;
+    if (url) {
+      return (
+        <Image
+          source={{ uri: url }}
+          style={{ width: size, height: size, borderRadius: size / 2, marginRight: 12 }}
+        />
+      );
+    }
+    const initials = user.name
+      .split(' ')
+      .map((p) => p[0])
+      .slice(0, 2)
+      .join('')
+      .toUpperCase();
+    return (
+      <View style={[styles.avatarFallback, { width: size, height: size, borderRadius: size / 2 }]}>
+        <Text style={styles.avatarFallbackText}>{initials}</Text>
       </View>
     );
   }
@@ -273,4 +308,11 @@ const buildStyles = (c: Palette) =>
     checkboxOn: { backgroundColor: c.primary, borderColor: c.primary },
     checkmark: { color: '#FFFFFF', fontSize: 13, fontWeight: '700' },
     checkboxLabel: { color: c.textSecondary, fontSize: 12, fontWeight: '600' },
+    avatarFallback: {
+      backgroundColor: c.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: 12,
+    },
+    avatarFallbackText: { color: '#FFFFFF', fontSize: 16, fontWeight: '800' },
   });

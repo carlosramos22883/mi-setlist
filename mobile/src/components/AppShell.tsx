@@ -15,6 +15,7 @@ import { colors, type Palette } from '../constants/theme';
 import type { ScreenName } from '../navigation/useNavigation';
 import ThemeToggle from './ThemeToggle';
 import { useHeaderActions } from '../context/HeaderActionsContext';
+import { API_URL } from '../constants/config';
 
 interface Props {
   screen: ScreenName;
@@ -39,6 +40,24 @@ export default function AppShell({ screen, navigate, children }: Props) {
     .slice(0, 2)
     .join('')
     .toUpperCase();
+
+  const avatarUrl = user?.avatarPath ? `${API_URL}/${user.avatarPath}` : null;
+
+  function renderAvatar(size = 32) {
+    if (avatarUrl) {
+      return (
+        <Image
+          source={{ uri: avatarUrl }}
+          style={{ width: size, height: size, borderRadius: size / 2 }}
+        />
+      );
+    }
+    return (
+      <View style={[s.avatar, { width: size, height: size, borderRadius: size / 2 }]}>
+        <Text style={s.avatarText}>{initials}</Text>
+      </View>
+    );
+  }
 
   function go(to: ScreenName) {
     setDrawerOpen(false);
@@ -90,9 +109,7 @@ export default function AppShell({ screen, navigate, children }: Props) {
           <ThemeToggle />          
 
           <TouchableOpacity style={s.userChip} onPress={() => setMenuOpen((v) => !v)}>
-            <View style={s.avatar}>
-              <Text style={s.avatarText}>{initials}</Text>
-            </View>
+            {renderAvatar(32)}
             <Text style={s.userName} numberOfLines={1}>{user?.name}</Text>
             <Ionicons name="chevron-down" size={16} color={c.textSecondary} />
           </TouchableOpacity>
@@ -160,9 +177,7 @@ export default function AppShell({ screen, navigate, children }: Props) {
             {/* Parte baja del drawer: usuario + perfil + logout */}
             <View style={s.drawerFooter}>
               <View style={s.row}>
-                <View style={s.avatar}>
-                  <Text style={s.avatarText}>{initials}</Text>
-                </View>
+                {renderAvatar(32)}
                 <View style={{ flex: 1 }}>
                   <Text style={s.drawerUserName} numberOfLines={1}>{user?.name}</Text>
                   <Text style={s.drawerUserEmail} numberOfLines={1}>{user?.email}</Text>

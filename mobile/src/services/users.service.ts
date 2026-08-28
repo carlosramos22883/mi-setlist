@@ -9,6 +9,7 @@ export interface AdminUser {
   name: string;
   email: string;
   emailVerifiedAt: string | null;
+  avatarPath: string | null;
   deletedAt: string | null;
   createdAt: string;
   roles: { id: string; name: string }[];
@@ -35,7 +36,7 @@ export async function createUser(payload: {
 
 // PATCH /users/:id
 export async function updateUser(id: string, payload: {
-  name?: string; email?: string; password?: string; roleIds?: string[];
+  name?: string; email?: string; password?: string; roleIds?: string[]; avatarPath?: string;
 }) {
   const { data } = await api.patch<AdminUser>(`/users/${id}`, payload);
   return data;
@@ -44,11 +45,5 @@ export async function updateUser(id: string, payload: {
 // DELETE /users/:id
 export async function deleteUser(id: string) {
   const { data } = await api.delete<{ message: string }>(`/users/${id}`);
-  return data;
-}
-
-// PATCH /users/me — perfil propio
-export async function updateProfile(payload: { name?: string; email?: string; password?: string }) {
-  const { data } = await api.patch<{ message: string }>('/users/me', payload);
   return data;
 }
