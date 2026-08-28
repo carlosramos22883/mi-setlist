@@ -14,6 +14,7 @@ import { useTheme } from '../context/ThemeContext';
 import { colors, type Palette } from '../constants/theme';
 import type { ScreenName } from '../navigation/useNavigation';
 import ThemeToggle from './ThemeToggle';
+import { useHeaderActions } from '../context/HeaderActionsContext';
 
 interface Props {
   screen: ScreenName;
@@ -25,6 +26,8 @@ export default function AppShell({ screen, navigate, children }: Props) {
   const { user, logout, can } = useAuth();
   const { c } = useTheme();
   const s = buildStyles(c);
+
+  const { actions: headerActions } = useHeaderActions();
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -83,7 +86,8 @@ export default function AppShell({ screen, navigate, children }: Props) {
         </View>
 
         <View style={s.row}>
-          <ThemeToggle />
+          {headerActions}
+          <ThemeToggle />          
 
           <TouchableOpacity style={s.userChip} onPress={() => setMenuOpen((v) => !v)}>
             <View style={s.avatar}>

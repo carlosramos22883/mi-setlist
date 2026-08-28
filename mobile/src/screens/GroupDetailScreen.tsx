@@ -22,6 +22,8 @@ import { useTheme } from '../context/ThemeContext';
 import { confirmAction, showAlert } from '../utils/dialogs';
 import ScreenHeader from '../components/ScreenHeader' 
 import RowActions from '../components/RowActions' 
+import { useHeaderActions } from '../context/HeaderActionsContext';
+import { Ionicons } from '@expo/vector-icons';
 
 const API_URL = 'http://localhost:3000/api/v1';
 
@@ -45,6 +47,7 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 export default function GroupDetailScreen({ groupId, onBack }: Props) {
+  const { setActions } = useHeaderActions();
   const { c, g: globalStyles } = useTheme();
   const styles = buildStyles(c);
   const { user: currentUser } = useAuth();
@@ -69,6 +72,34 @@ export default function GroupDetailScreen({ groupId, onBack }: Props) {
       setLoading(false);
     }
   }, [groupId]);
+
+  // Registra las acciones al montar
+  useEffect(() => {
+    if (!group) return;
+    const canInvite = group.myRole === 'owner' || group.myRole === 'admin';
+    const canDelete = group.myRole === 'owner';
+
+    setActions(
+      <View style={{ flexDirection: 'row', gap: 8 }}>
+        {canInvite && (
+          <TouchableOpacity
+            style={{ padding: 6 }}
+            onPress={() => setInviteModalVisible(true)}
+          >
+            <Ionicons name="mail-outline" size={22} color={c.text} />
+          </TouchableOpacity>
+        )}
+        {canDelete && (
+          <TouchableOpacity style={{ padding: 6 }} onPress={handleDeleteGroup}>
+            <Ionicons name="trash-outline" size={22} color={c.text} />
+          </TouchableOpacity>
+        )}
+      </View>
+    );
+
+    // Limpia al desmontar
+    return () => setActions(null);
+  }, [group, c]);
 
   useEffect(() => {
     loadGroup();

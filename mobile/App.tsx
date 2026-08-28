@@ -19,11 +19,13 @@ import GroupsScreen from './src/screens/GroupsScreen';
 import GroupDetailScreen from './src/screens/GroupDetailScreen';
 import { ThemeProvider } from './src/context/ThemeContext';
 import AppShell from './src/components/AppShell';
+import { HeaderActionsProvider } from './src/context/HeaderActionsContext';
+import ScreenTransition from './src/components/ScreenTransition';
 
 function Root() {
   const { user, loading } = useAuth();
   const { screen, params, navigate } = useNavigation('auth');
-  const [hasResetToken, setHasResetToken] = useState(false);
+  const [hasResetToken, setHasResetToken] = useState(false);    
 
   // (el useEffect que detecta ?token= queda IGUAL que antes)
   useEffect(() => {
@@ -67,12 +69,20 @@ function Root() {
         content = <GroupsScreen onNavigate={(to, p) => navigate(to as ScreenName, p)} />;
         break;
       case 'groupDetail':
-        content = <GroupDetailScreen groupId={params.groupId} onBack={() => navigate('groups')} />;
+        content = <GroupDetailScreen
+          groupId={params.groupId}
+          onBack={() => navigate('groups')}
+          onHeaderActions={(actions) => setHeaderActions(actions)}
+        />;
         break;
       default:
         content = <HomeScreen onNavigate={navigate} />;
     }
-    return <AppShell screen={screen} navigate={navigate}>{content}</AppShell>;
+    return <AppShell screen={screen} navigate={navigate}>
+      <ScreenTransition key={screen} direction="right">
+        {content}
+      </ScreenTransition>
+    </AppShell>;
   }
 
   // ---------- NO LOGUEADO ----------
@@ -107,10 +117,12 @@ const styles = StyleSheet.create({
 export default function App() {
   return (
     <ThemeProvider>
-      <AuthProvider>
-        <Root />
-        <StatusBar style="light" />
-      </AuthProvider>
+      <HeaderActionsProvider>
+        <AuthProvider>
+          <Root />
+          <StatusBar style="light" />
+        </AuthProvider>
+      </HeaderActionsProvider>
     </ThemeProvider>
   );
 }
