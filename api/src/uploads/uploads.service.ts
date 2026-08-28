@@ -9,8 +9,22 @@ import {
 import { randomUUID } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const sharp = require('sharp');
+
+// Tipo mínimo del pipeline de sharp (solo lo que usamos nosotros)
+interface SharpPipeline {
+  rotate(): SharpPipeline;
+  resize(
+    width: number,
+    height: number,
+    options?: { fit?: 'cover' },
+  ): SharpPipeline;
+  png(): SharpPipeline;
+  toFile(destination: string): Promise<unknown>;
+}
+type SharpFactory = (input: Buffer) => SharpPipeline;
+
+// eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-require-imports
+const sharp = require('sharp') as SharpFactory;
 
 @Injectable()
 export class UploadsService {
@@ -27,9 +41,11 @@ export class UploadsService {
   // ---------------------------------------------------------
   async saveSquareImage(buffer: Buffer, mimetype: string): Promise<string> {
     // Validación de tipo (nunca confíes en el cliente)
-    if (!['image/jpeg', 'image/png', 'image/webp'].includes(mimetype)) {
+    if (
+      !['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(mimetype)
+    ) {
       throw new BadRequestException(
-        'Solo se permiten imágenes JPG, PNG o WEBP',
+        'Solo se permiten imágenes JPG, PNG, GIF o WEBP',
       );
     }
 
@@ -39,6 +55,7 @@ export class UploadsService {
     // sharp: recorte cuadrado centrado + redimensión
     // fit:'cover' = llena el cuadrado recortando lo que sobra
     await sharp(buffer)
+      .rotate()
       .resize(512, 512, { fit: 'cover' })
       .png()
       .toFile(destination);
@@ -54,7 +71,8 @@ export class UploadsService {
     // Seguridad: path.basename evita "../../etc/passwd" (path traversal)
     const safe = path.basename(filename);
     const full = path.join(this.storageDir, safe);
-    if (!fs.existsSync(full)) throw new NotFoundException('Archivo no encontrado');
+    if (!fs.existsSync(full))
+      throw new NotFoundException('Archivo no encontrado');
     return full;
   }
 }

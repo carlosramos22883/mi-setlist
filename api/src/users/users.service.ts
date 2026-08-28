@@ -24,6 +24,7 @@ const USER_SELECT = {
   name: true,
   email: true,
   emailVerifiedAt: true,
+  avatarPath: true,
   deletedAt: true,
   createdAt: true,
   updatedAt: true,
@@ -150,6 +151,7 @@ export class UsersService {
     if (dto.name) data.name = dto.name;
     if (dto.password) data.passwordHash = await bcrypt.hash(dto.password, 10);
     if (emailChanged) data.email = dto.email;
+    if (dto.avatarPath) data.avatarPath = dto.avatarPath;
 
     if (Object.keys(data).length > 0) {
       await this.prisma.user.update({ where: { id }, data });
@@ -250,6 +252,7 @@ export class UsersService {
     const data: Record<string, unknown> = {};
     if (dto.name) data.name = dto.name;
     if (dto.password) data.passwordHash = await bcrypt.hash(dto.password, 10);
+    if (dto.avatarPath) data.avatarPath = dto.avatarPath;
 
     if (Object.keys(data).length > 0) {
       await this.prisma.user.update({ where: { id: userId }, data });

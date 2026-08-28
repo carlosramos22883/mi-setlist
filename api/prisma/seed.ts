@@ -9,9 +9,14 @@ import 'dotenv/config';
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
 const prisma = new PrismaClient({ adapter });
 
-// Permisos de administración: CRUD completo por recurso
+// Permisos de administración del sistema (solo para admin)
 const ADMIN_RESOURCES = ['users', 'roles'] as const;
+
+// Permisos de dominio (lo que hace un usuario normal)
+const DOMAIN_RESOURCES = ['groups', 'members', 'songs', 'setlists', 'events'] as const;
+
 const ACTIONS = ['view', 'create', 'edit', 'delete'] as const;
+
 const ACTION_LABEL: Record<string, string> = {
   view: 'Ver',
   create: 'Crear',
@@ -19,18 +24,23 @@ const ACTION_LABEL: Record<string, string> = {
   delete: 'Eliminar',
 };
 
-// Permisos de perfil propio (para el rol Usuario)
-const PROFILE_PERMISSIONS = [
-  { name: 'profile.view', description: 'Ver perfil propio' },
-  { name: 'profile.edit', description: 'Editar perfil propio' },
+// Permisos específicos que no siguen el patrón CRUD
+const SPECIFIC_PERMISSIONS = [
+  { name: 'profile.view', group: 'profile', description: 'Ver perfil propio' },
+  { name: 'profile.edit', group: 'profile', description: 'Editar perfil propio' },
+  { name: 'members.invite', group: 'members', description: 'Invitar miembros a un grupo' },
+  { name: 'members.remove', group: 'members', description: 'Expulsar miembros de un grupo' },
+  { name: 'members.change_role', group: 'members', description: 'Cambiar rol de miembros' },
 ];
 
 async function main() {
   console.log('🌱 Sembrando Mi SetList...');
 
   // ----------------------------------------------------------
-  // 1) PERMISOS
+  // 1) PERMISOS GLOBALES
   // ----------------------------------------------------------
+  
+  // Permisos CRUD para admin (users.*, roles.*)
   for (const res of ADMIN_RESOURCES) {
     for (const act of ACTIONS) {
       await prisma.permission.upsert({
@@ -44,13 +54,31 @@ async function main() {
       });
     }
   }
-  for (const p of PROFILE_PERMISSIONS) {
+
+  // Permisos CRUD para dominio (groups.*, songs.*, etc.)
+  for (const res of DOMAIN_RESOURCES) {
+    for (const act of ACTIONS) {
+      await prisma.permission.upsert({
+        where: { name: `${res}.${act}` },
+        update: {},
+        create: {
+          name: `${res}.${act}`,
+          group: res,
+          description: `${ACTION_LABEL[act]} ${res}`,
+        },
+      });
+    }
+  }
+
+  // Permisos específicos
+  for (const p of SPECIFIC_PERMISSIONS) {
     await prisma.permission.upsert({
       where: { name: p.name },
       update: {},
-      create: { name: p.name, group: 'profile', description: p.description },
+      create: { name: p.name, group: p.group, description: p.description },
     });
   }
+
   const allPermissions = await prisma.permission.findMany();
 
   // ----------------------------------------------------------
@@ -61,27 +89,30 @@ async function main() {
     update: {},
     create: { name: 'Administrador', description: 'Acceso total al sistema' },
   });
+  
   const usuario = await prisma.role.upsert({
     where: { name: 'Usuario' },
     update: {},
     create: {
       name: 'Usuario',
-      description: 'Rol por defecto para cuentas nuevas',
+      description: 'Rol por defecto: todo el dominio, sin administración',
     },
   });
 
-  // Administrador: TODOS los permisos (sync)
+  // Administrador: TODOS los permisos
   await prisma.rolePermission.deleteMany({ where: { roleId: admin.id } });
   await prisma.rolePermission.createMany({
     data: allPermissions.map((p) => ({ roleId: admin.id, permissionId: p.id })),
     skipDuplicates: true,
   });
 
-  // 🆕 Usuario: permisos de perfil propio (nunca queda vacío)
-  const profilePerms = allPermissions.filter((p) => p.group === 'profile');
+  // Usuario: todos los permisos EXCEPTO users.* y roles.*
+  const userPerms = allPermissions.filter(
+    (p) => p.group !== 'users' && p.group !== 'roles'
+  );
   await prisma.rolePermission.deleteMany({ where: { roleId: usuario.id } });
   await prisma.rolePermission.createMany({
-    data: profilePerms.map((p) => ({ roleId: usuario.id, permissionId: p.id })),
+    data: userPerms.map((p) => ({ roleId: usuario.id, permissionId: p.id })),
     skipDuplicates: true,
   });
 
@@ -99,6 +130,7 @@ async function main() {
       roles: { create: [{ roleId: admin.id }] },
     },
   });
+  
   await prisma.user.upsert({
     where: { email: 'demo@misetlist.app' },
     update: {},
@@ -107,22 +139,11 @@ async function main() {
       email: 'demo@misetlist.app',
       passwordHash: await bcrypt.hash('Demo123!', 10),
       emailVerifiedAt: new Date(),
+      roles: { create: [{ roleId: usuario.id }] },
     },
   });
 
-  // Asegura que Demo tenga el rol Usuario
-  const demo = await prisma.user.findUnique({
-    where: { email: 'demo@misetlist.app' },
-  });
-  if (demo) {
-    await prisma.userRole.upsert({
-      where: { userId_roleId: { userId: demo.id, roleId: usuario.id } },
-      update: {},
-      create: { userId: demo.id, roleId: usuario.id },
-    });
-  }
-
-  // 🆕 Asegura que TODO usuario sin rol reciba "Usuario"
+  // Asegura que TODO usuario sin rol reciba "Usuario"
   const usersWithoutRole = await prisma.user.findMany({
     where: { roles: { none: {} } },
     select: { id: true },
@@ -189,8 +210,9 @@ async function main() {
   }
 
   console.log('✅ Seed completo:');
-  console.log('   admin@misetlist.app / Admin123!  (Administrador)');
-  console.log('   demo@misetlist.app  / Demo123!   (Usuario)');
+  console.log('   admin@misetlist.app / Admin123!  (Administrador - todos los permisos)');
+  console.log('   demo@misetlist.app  / Demo123!   (Usuario - todo menos admin)');
+  console.log(`   ${allPermissions.length} permisos totales creados`);
 }
 
 main()

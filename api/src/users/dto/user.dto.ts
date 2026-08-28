@@ -70,6 +70,14 @@ export class UpdateUserDto {
   @IsStrongPassword(PASSWORD_RULES, { message: PASSWORD_RULE_MESSAGE })
   password?: string;
 
+  @ApiPropertyOptional({
+    description: 'Ruta relativa del avatar (de POST /uploads/image)',
+    example: 'uploads/abc-123.png',
+  })
+  @IsOptional()
+  @IsString()
+  avatarPath?: string;
+
   @ApiPropertyOptional({ type: [String] })
   @IsOptional()
   @IsArray()
@@ -96,6 +104,14 @@ export class UpdateProfileDto {
   @IsOptional()
   @IsStrongPassword(PASSWORD_RULES, { message: PASSWORD_RULE_MESSAGE })
   password?: string;
+
+  @ApiPropertyOptional({
+    description: 'Ruta relativa del avatar (de POST /uploads/image)',
+    example: 'uploads/abc-123.png',
+  })
+  @IsOptional()
+  @IsString()
+  avatarPath?: string;
 }
 
 // ---------------------------------------------------------

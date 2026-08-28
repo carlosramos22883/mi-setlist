@@ -303,6 +303,7 @@ export class AuthService {
       name: user.name,
       email: user.email,
       emailVerifiedAt: user.emailVerifiedAt,
+      avatarPath: user.avatarPath,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     };
