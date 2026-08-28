@@ -13,7 +13,13 @@ const prisma = new PrismaClient({ adapter });
 const ADMIN_RESOURCES = ['users', 'roles'] as const;
 
 // Permisos de dominio (lo que hace un usuario normal)
-const DOMAIN_RESOURCES = ['groups', 'members', 'songs', 'setlists', 'events'] as const;
+const DOMAIN_RESOURCES = [
+  'groups',
+  'members',
+  'songs',
+  'setlists',
+  'events',
+] as const;
 
 const ACTIONS = ['view', 'create', 'edit', 'delete'] as const;
 
@@ -27,10 +33,26 @@ const ACTION_LABEL: Record<string, string> = {
 // Permisos específicos que no siguen el patrón CRUD
 const SPECIFIC_PERMISSIONS = [
   { name: 'profile.view', group: 'profile', description: 'Ver perfil propio' },
-  { name: 'profile.edit', group: 'profile', description: 'Editar perfil propio' },
-  { name: 'members.invite', group: 'members', description: 'Invitar miembros a un grupo' },
-  { name: 'members.remove', group: 'members', description: 'Expulsar miembros de un grupo' },
-  { name: 'members.change_role', group: 'members', description: 'Cambiar rol de miembros' },
+  {
+    name: 'profile.edit',
+    group: 'profile',
+    description: 'Editar perfil propio',
+  },
+  {
+    name: 'members.invite',
+    group: 'members',
+    description: 'Invitar miembros a un grupo',
+  },
+  {
+    name: 'members.remove',
+    group: 'members',
+    description: 'Expulsar miembros de un grupo',
+  },
+  {
+    name: 'members.change_role',
+    group: 'members',
+    description: 'Cambiar rol de miembros',
+  },
 ];
 
 async function main() {
@@ -39,7 +61,7 @@ async function main() {
   // ----------------------------------------------------------
   // 1) PERMISOS GLOBALES
   // ----------------------------------------------------------
-  
+
   // Permisos CRUD para admin (users.*, roles.*)
   for (const res of ADMIN_RESOURCES) {
     for (const act of ACTIONS) {
@@ -89,7 +111,7 @@ async function main() {
     update: {},
     create: { name: 'Administrador', description: 'Acceso total al sistema' },
   });
-  
+
   const usuario = await prisma.role.upsert({
     where: { name: 'Usuario' },
     update: {},
@@ -108,7 +130,7 @@ async function main() {
 
   // Usuario: todos los permisos EXCEPTO users.* y roles.*
   const userPerms = allPermissions.filter(
-    (p) => p.group !== 'users' && p.group !== 'roles'
+    (p) => p.group !== 'users' && p.group !== 'roles',
   );
   await prisma.rolePermission.deleteMany({ where: { roleId: usuario.id } });
   await prisma.rolePermission.createMany({
@@ -130,7 +152,7 @@ async function main() {
       roles: { create: [{ roleId: admin.id }] },
     },
   });
-  
+
   await prisma.user.upsert({
     where: { email: 'demo@misetlist.app' },
     update: {},
@@ -210,8 +232,12 @@ async function main() {
   }
 
   console.log('✅ Seed completo:');
-  console.log('   admin@misetlist.app / Admin123!  (Administrador - todos los permisos)');
-  console.log('   demo@misetlist.app  / Demo123!   (Usuario - todo menos admin)');
+  console.log(
+    '   admin@misetlist.app / Admin123!  (Administrador - todos los permisos)',
+  );
+  console.log(
+    '   demo@misetlist.app  / Demo123!   (Usuario - todo menos admin)',
+  );
   console.log(`   ${allPermissions.length} permisos totales creados`);
 }
 
