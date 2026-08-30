@@ -17,6 +17,7 @@ import PaginationBar from '../components/PaginationBar';
 import EmptyState from '../components/EmptyState';
 import RowActions from '../components/RowActions';
 import GroupFormModal from '../components/GroupFormModal';
+import { useAuth } from '../context/AuthContext';
 
 const API_URL = 'http://localhost:3000/api/v1';
 
@@ -33,6 +34,7 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 export default function GroupsScreen({ onNavigate }: Props) {
+  const { can } = useAuth();
   const { c, g: globalStyles } = useTheme();
   const styles = buildStyles(c);
 
@@ -140,8 +142,8 @@ export default function GroupsScreen({ onNavigate }: Props) {
       <RowActions
         onEdit={() => openEdit(item)}
         onDelete={() => handleDelete(item)}
-        canEdit={item.myRole === 'owner' || item.myRole === 'admin'}
-        canDelete={item.myRole === 'owner'}
+        canEdit={can('groups.edit') && (item.myRole === 'owner' || item.myRole === 'admin')}
+        canDelete={can('groups.delete') && item.myRole === 'owner'}
       />
     </View>
   );
@@ -155,10 +157,10 @@ export default function GroupsScreen({ onNavigate }: Props) {
         search={search}
         onSearchChange={handleSearch}
         searchPlaceholder="Buscar grupo..."
-        onCreate={() => {
+        onCreate={can('groups.create') ? () => {
           setEditingGroup(null);
           setModalVisible(true);
-        }}
+        } : undefined}
         createLabel="+ Nuevo grupo"
       />
 
@@ -186,6 +188,7 @@ export default function GroupsScreen({ onNavigate }: Props) {
         onClose={() => setModalVisible(false)}
         onSaved={() => loadGroups()}
         initialGroup={editingGroup}
+        canSave={editingGroup ? can('groups.edit') : can('groups.create')}
       />
     </ScrollView>
   );

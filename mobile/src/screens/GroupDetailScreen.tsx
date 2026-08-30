@@ -17,11 +17,11 @@ import {
 import { useAuth } from '../context/AuthContext';
 import * as GroupsService from '../services/groups.service';
 import type { GroupDetail, GroupMember } from '../services/groups.service';
-import { colors, type Palette } from '../constants/theme';
+import { type Palette } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
 import { confirmAction, showAlert } from '../utils/dialogs';
-import ScreenHeader from '../components/ScreenHeader' 
-import RowActions from '../components/RowActions' 
+import ScreenHeader from '../components/ScreenHeader';
+import RowActions from '../components/RowActions';
 import { useHeaderActions } from '../context/HeaderActionsContext';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -50,12 +50,12 @@ export default function GroupDetailScreen({ groupId, onBack }: Props) {
   const { setActions } = useHeaderActions();
   const { c, g: globalStyles } = useTheme();
   const styles = buildStyles(c);
-  const { user: currentUser } = useAuth();
+  // 🆕 Traemos `can` para la doble validación
+  const { user: currentUser, can } = useAuth();
 
   const [group, setGroup] = useState<GroupDetail | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Modal de invitar
   const [inviteModalVisible, setInviteModalVisible] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<'admin' | 'member'>('member');
@@ -73,12 +73,20 @@ export default function GroupDetailScreen({ groupId, onBack }: Props) {
     }
   }, [groupId]);
 
+  // ¿Qué puede hacer el usuario actual? (doble capa: global + contextual)
+  // 🆕 Calculamos las variables de permiso DESPUÉS de tener el grupo
+  const myRole = group?.myRole;
+  const canEditGroup = can('groups.edit') && (myRole === 'owner' || myRole === 'admin');
+  const canInvite = can('members.invite') && (myRole === 'owner' || myRole === 'admin');
+  const canRemove = can('members.remove') && (myRole === 'owner' || myRole === 'admin');
+  const canChangeRoles = can('members.change_role') && myRole === 'owner';
+  const canDelete = can('groups.delete') && myRole === 'owner';
+  const canLeave = myRole !== 'owner' && myRole !== undefined; // cualquier miembro no-owner
+
   // Registra las acciones al montar
+  // 🆕 Usa las variables de doble capa + agregamos canInvite y canDelete al array de deps
   useEffect(() => {
     if (!group) return;
-    const canInvite = group.myRole === 'owner' || group.myRole === 'admin';
-    const canDelete = group.myRole === 'owner';
-
     setActions(
       <View style={{ flexDirection: 'row', gap: 8 }}>
         {canInvite && (
@@ -96,25 +104,13 @@ export default function GroupDetailScreen({ groupId, onBack }: Props) {
         )}
       </View>
     );
-
-    // Limpia al desmontar
     return () => setActions(null);
-  }, [group, c]);
+  }, [group, c, canInvite, canDelete]);
 
   useEffect(() => {
     loadGroup();
   }, [loadGroup]);
 
-  // ¿Qué puede hacer el usuario actual? (basado en myRole)
-  const myRole = group?.myRole;
-  const canEdit = myRole === 'owner' || myRole === 'admin';
-  const canInvite = myRole === 'owner' || myRole === 'admin';
-  const canRemove = myRole === 'owner' || myRole === 'admin';
-  const canChangeRoles = myRole === 'owner';
-  const canDelete = myRole === 'owner';
-  const canLeave = myRole !== 'owner';
-
-  // --- INVITAR ---
   async function handleInvite() {
     if (!inviteEmail.trim()) return;
     setInviting(true);
@@ -133,7 +129,6 @@ export default function GroupDetailScreen({ groupId, onBack }: Props) {
     }
   }
 
-  // --- CAMBIAR ROL ---
   function handleChangeRole(member: GroupMember) {
     if (member.user.id === group?.ownerId) {
       showAlert('No permitido', 'No puedes cambiar el rol del dueño');
@@ -154,7 +149,6 @@ export default function GroupDetailScreen({ groupId, onBack }: Props) {
     );
   }
 
-  // --- EXPULSAR ---
   function handleRemoveMember(member: GroupMember) {
     if (member.user.id === group?.ownerId) {
       showAlert('No permitido', 'No puedes expulsar al dueño');
@@ -174,7 +168,6 @@ export default function GroupDetailScreen({ groupId, onBack }: Props) {
     );
   }
 
-  // --- ABANDONAR ---
   function handleLeave() {
     confirmAction(
       'Abandonar grupo',
@@ -191,7 +184,6 @@ export default function GroupDetailScreen({ groupId, onBack }: Props) {
     );
   }
 
-  // --- ELIMINAR GRUPO ---
   function handleDeleteGroup() {
     confirmAction(
       'Eliminar grupo',
@@ -234,7 +226,6 @@ export default function GroupDetailScreen({ groupId, onBack }: Props) {
       <ScrollView contentContainerStyle={styles.scroll}>
         <ScreenHeader title={group.name} subtitle={TYPE_LABELS[group.type]} onBack={onBack} />
 
-        {/* Cabecera del grupo */}
         <View style={styles.groupHeader}>
           {logoUrl ? (
             <Image source={{ uri: logoUrl }} style={styles.groupLogo} />
@@ -251,7 +242,7 @@ export default function GroupDetailScreen({ groupId, onBack }: Props) {
           <Text style={styles.myRoleBadge}>Tu rol: {ROLE_LABELS[group.myRole]}</Text>
         </View>
 
-        {/* Acciones del grupo */}
+        {/* Acciones del grupo (🆕 usan doble capa de permisos) */}
         <View style={styles.actionsRow}>
           {canInvite && (
             <TouchableOpacity
@@ -279,7 +270,6 @@ export default function GroupDetailScreen({ groupId, onBack }: Props) {
           )}
         </View>
 
-        {/* Lista de miembros */}
         <Text style={styles.sectionTitle}>
           Miembros ({group.members.length})
         </Text>
@@ -301,10 +291,10 @@ export default function GroupDetailScreen({ groupId, onBack }: Props) {
                 </View>
 
                 <RowActions
-                    onEdit={() => handleChangeRole(item)}
-                    onDelete={() => handleRemoveMember(item)}
-                    canEdit={canChangeRoles && !isOwner}
-                    canDelete={canRemove && !isOwner}
+                  onEdit={() => handleChangeRole(item)}
+                  onDelete={() => handleRemoveMember(item)}
+                  canEdit={canChangeRoles && !isOwner}
+                  canDelete={canRemove && !isOwner}
                 />
               </View>
             );
@@ -312,7 +302,6 @@ export default function GroupDetailScreen({ groupId, onBack }: Props) {
         />
       </ScrollView>
 
-      {/* Modal de invitación */}
       <Modal
         visible={inviteModalVisible}
         animationType="slide"
@@ -386,116 +375,117 @@ export default function GroupDetailScreen({ groupId, onBack }: Props) {
   );
 }
 
-const buildStyles = (c: Palette) => StyleSheet.create({
-  loadingWrap: { alignItems: 'center', justifyContent: 'center' },
-  scroll: { padding: 24, paddingTop: 48 },
-  header: { marginBottom: 12 },
-  empty: { color: c.textMuted, textAlign: 'center', marginTop: 40 },
-  groupHeader: {
-    backgroundColor: c.surface,
-    borderRadius: 16,
-    padding: 20,
-    alignItems: 'center',
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: c.border,
-  },
-  groupLogo: {
-    width: 120,
-    height: 120,
-    borderRadius: 16,
-    marginBottom: 12,
-  },
-  logoPlaceholder: {
-    backgroundColor: c.surface2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logoPlaceholderText: { fontSize: 48 },
-  groupName: { color: c.text, fontSize: 22, fontWeight: '700', textAlign: 'center' },
-  groupType: { color: c.accent, fontSize: 14, fontWeight: '600', marginTop: 4 },
-  groupDescription: {
-    color: c.textSecondary,
-    fontSize: 13,
-    textAlign: 'center',
-    marginTop: 8,
-  },
-  myRoleBadge: {
-    marginTop: 12,
-    backgroundColor: c.primarySoft,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 9999,
-    color: c.primary,
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  actionsRow: { flexDirection: 'row', gap: 8, marginBottom: 20, flexWrap: 'wrap' },
-  dangerBtn: { flex: 1 },
-  sectionTitle: {
-    color: c.textSecondary,
-    fontSize: 12,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    marginBottom: 10,
-  },
-  memberRow: {
-    backgroundColor: c.surface,
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: c.border,
-  },
-  memberInfo: { flex: 1 },
-  memberName: { color: c.text, fontSize: 15, fontWeight: '700' },
-  meTag: { color: c.accent, fontSize: 12, fontWeight: '400' },
-  memberEmail: { color: c.textSecondary, fontSize: 12, marginTop: 2 },
-  memberRole: { color: c.textMuted, fontSize: 11, marginTop: 2 },
-  memberActions: { flexDirection: 'row', gap: 6 },
-  iconBtn: {
-    backgroundColor: c.surface2,
-    borderRadius: 8,
-    padding: 8,
-    minWidth: 36,
-    alignItems: 'center',
-  },
-  deleteBtn: { backgroundColor: 'rgba(220, 53, 69, 0.15)' },
-  iconBtnText: { fontSize: 14 },
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    justifyContent: 'center',
-    padding: 24,
-  },
-  modal: {
-    backgroundColor: c.surface,
-    borderRadius: 16,
-    padding: 20,
-  },
-  label: {
-    color: c.textSecondary,
-    fontSize: 12,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    marginTop: 12,
-    marginBottom: 6,
-  },
-  roleGrid: { flexDirection: 'row', gap: 8 },
-  roleChip: {
-    flex: 1,
-    backgroundColor: c.surface2,
-    borderRadius: 8,
-    paddingVertical: 10,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: c.border,
-  },
-  roleChipSelected: { backgroundColor: c.primary, borderColor: c.primary },
-  roleChipText: { color: c.textSecondary, fontSize: 13, fontWeight: '600' },
-  roleChipTextSelected: { color: '#FFFFFF' },
-  modalActions: { flexDirection: 'row', gap: 10, marginTop: 20 },
-  modalBtn: { flex: 1 },
-});
+const buildStyles = (c: Palette) =>
+  StyleSheet.create({
+    loadingWrap: { alignItems: 'center', justifyContent: 'center' },
+    scroll: { padding: 24, paddingTop: 48 },
+    header: { marginBottom: 12 },
+    empty: { color: c.textMuted, textAlign: 'center', marginTop: 40 },
+    groupHeader: {
+      backgroundColor: c.surface,
+      borderRadius: 16,
+      padding: 20,
+      alignItems: 'center',
+      marginBottom: 20,
+      borderWidth: 1,
+      borderColor: c.border,
+    },
+    groupLogo: {
+      width: 120,
+      height: 120,
+      borderRadius: 16,
+      marginBottom: 12,
+    },
+    logoPlaceholder: {
+      backgroundColor: c.surface2,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    logoPlaceholderText: { fontSize: 48 },
+    groupName: { color: c.text, fontSize: 22, fontWeight: '700', textAlign: 'center' },
+    groupType: { color: c.accent, fontSize: 14, fontWeight: '600', marginTop: 4 },
+    groupDescription: {
+      color: c.textSecondary,
+      fontSize: 13,
+      textAlign: 'center',
+      marginTop: 8,
+    },
+    myRoleBadge: {
+      marginTop: 12,
+      backgroundColor: c.primarySoft,
+      paddingHorizontal: 12,
+      paddingVertical: 4,
+      borderRadius: 9999,
+      color: c.primary,
+      fontSize: 12,
+      fontWeight: '700',
+    },
+    actionsRow: { flexDirection: 'row', gap: 8, marginBottom: 20, flexWrap: 'wrap' },
+    dangerBtn: { flex: 1 },
+    sectionTitle: {
+      color: c.textSecondary,
+      fontSize: 12,
+      fontWeight: '700',
+      textTransform: 'uppercase',
+      marginBottom: 10,
+    },
+    memberRow: {
+      backgroundColor: c.surface,
+      borderRadius: 12,
+      padding: 14,
+      marginBottom: 8,
+      flexDirection: 'row',
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: c.border,
+    },
+    memberInfo: { flex: 1 },
+    memberName: { color: c.text, fontSize: 15, fontWeight: '700' },
+    meTag: { color: c.accent, fontSize: 12, fontWeight: '400' },
+    memberEmail: { color: c.textSecondary, fontSize: 12, marginTop: 2 },
+    memberRole: { color: c.textMuted, fontSize: 11, marginTop: 2 },
+    memberActions: { flexDirection: 'row', gap: 6 },
+    iconBtn: {
+      backgroundColor: c.surface2,
+      borderRadius: 8,
+      padding: 8,
+      minWidth: 36,
+      alignItems: 'center',
+    },
+    deleteBtn: { backgroundColor: 'rgba(220, 53, 69, 0.15)' },
+    iconBtnText: { fontSize: 14 },
+    overlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.6)',
+      justifyContent: 'center',
+      padding: 24,
+    },
+    modal: {
+      backgroundColor: c.surface,
+      borderRadius: 16,
+      padding: 20,
+    },
+    label: {
+      color: c.textSecondary,
+      fontSize: 12,
+      fontWeight: '700',
+      textTransform: 'uppercase',
+      marginTop: 12,
+      marginBottom: 6,
+    },
+    roleGrid: { flexDirection: 'row', gap: 8 },
+    roleChip: {
+      flex: 1,
+      backgroundColor: c.surface2,
+      borderRadius: 8,
+      paddingVertical: 10,
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: c.border,
+    },
+    roleChipSelected: { backgroundColor: c.primary, borderColor: c.primary },
+    roleChipText: { color: c.textSecondary, fontSize: 13, fontWeight: '600' },
+    roleChipTextSelected: { color: '#FFFFFF' },
+    modalActions: { flexDirection: 'row', gap: 10, marginTop: 20 },
+    modalBtn: { flex: 1 },
+  });

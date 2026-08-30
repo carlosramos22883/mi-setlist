@@ -31,9 +31,10 @@ interface Props {
   onClose: () => void;
   onSaved: () => void;
   initialGroup?: Group | null;
+  canSave?: boolean;
 }
 
-export default function GroupFormModal({ visible, onClose, onSaved, initialGroup }: Props) {
+export default function GroupFormModal({ visible, onClose, onSaved, initialGroup, canSave = true }: Props) {
   const { c } = useTheme();
   const s = buildStyles(c);
 
@@ -129,14 +130,14 @@ export default function GroupFormModal({ visible, onClose, onSaved, initialGroup
 
   return (
     <>
-      <FormModal
-        visible={visible}
-        onClose={onClose}
-        title={initialGroup ? `Editar: ${initialGroup.name}` : 'Nuevo grupo'}
-        submitLabel={initialGroup ? 'Guardar cambios' : 'Crear grupo'}
-        onSubmit={handleSave}
-        loading={saving}
-      >
+        <FormModal
+          visible={visible}
+          onClose={onClose}
+          title={initialGroup ? `Editar: ${initialGroup.name}` : 'Nuevo grupo'}
+          submitLabel={initialGroup ? 'Guardar cambios' : 'Crear grupo'}
+          onSubmit={canSave ? handleSave : undefined} // 🆕
+          loading={saving}
+        >
         {/* Logo actual + botón de cámara (como en Mis Gastos) */}
         <View style={s.logoSection}>
           <View style={s.logoWrap}>
