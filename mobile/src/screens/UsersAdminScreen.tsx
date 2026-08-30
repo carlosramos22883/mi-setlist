@@ -6,7 +6,7 @@ import {
   ActivityIndicator, FlatList, RefreshControl, ScrollView,
   StyleSheet, Text, TouchableOpacity, View, Image,
 } from 'react-native';
-import { confirmAction, showAlert } from '../utils/dialogs';
+import { confirmAction, showAlert, showSuccess } from '../utils/dialogs';
 import { useAuth } from '../context/AuthContext';
 import * as UsersService from '../services/users.service';
 import type { AdminUser } from '../services/users.service';
@@ -95,13 +95,15 @@ export default function UsersAdminScreen({ onBack }: Props) {
     setModalVisible(true);
   }
 
-  async function handleModalSubmit(payload: {
+    async function handleModalSubmit(payload: {
     name: string;
     email: string;
     password: string;
     roleIds: string[];
     avatarPath?: string;
   }) {
+    const wasEditing = !!editingUser; // 🆕 lo capturamos antes
+
     if (editingUser) {
       const updatePayload: Record<string, unknown> = {
         name: payload.name,
@@ -112,15 +114,12 @@ export default function UsersAdminScreen({ onBack }: Props) {
       if (payload.password !== '') updatePayload.password = payload.password;
 
       await UsersService.updateUser(editingUser.id, updatePayload);
-
-      // 🆕 Si el registro editado es el del usuario logueado,
-      // sincroniza el user global (topbar, drawer, perfil).
-      if (editingUser.id === currentUser?.id) {
-        await refreshUser();
-      }
+      if (editingUser.id === currentUser?.id) await refreshUser();
     } else {
       await UsersService.createUser(payload);
     }
+
+    showSuccess('Éxito', wasEditing ? 'Usuario actualizado' : 'Usuario creado'); // 🆕
     await loadUsers();
   }
 

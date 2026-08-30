@@ -21,6 +21,7 @@ import { ThemeProvider } from './src/context/ThemeContext';
 import AppShell from './src/components/AppShell';
 import { HeaderActionsProvider } from './src/context/HeaderActionsContext';
 import ScreenTransition from './src/components/ScreenTransition';
+import Swal from 'sweetalert2';
 
 function Root() {
   const { user, loading } = useAuth();
@@ -115,6 +116,25 @@ const styles = StyleSheet.create({
 });
 
 export default function App() {
+  // 🆕 Estilos globales de SweetAlert2 (solo web, CSS real inyectado)
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof document === 'undefined') return;
+    if (document.getElementById('ms-swal-styles')) return;
+    const style = document.createElement('style');
+    style.id = 'ms-swal-styles';
+    style.textContent = `
+      .swal2-container { z-index: 2147483647 !important; } /* 🆕 por encima de los Modal de RN */
+      .swal2-popup { border-radius: 16px !important; }
+      .swal2-title { font-weight: 800 !important; }
+      .swal2-styled {
+        border-radius: 9999px !important;
+        padding: 10px 26px !important;
+        font-weight: 700 !important;
+      }
+    `;
+    document.head.appendChild(style);
+  }, []);
+
   return (
     <ThemeProvider>
       <HeaderActionsProvider>

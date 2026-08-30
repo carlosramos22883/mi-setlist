@@ -54,7 +54,7 @@ export const buildGlobalStyles = (c: Palette) =>
 
   // --- Badges ---
   badge: { backgroundColor: c.primarySoft, borderRadius: 9999, paddingHorizontal: 14, paddingVertical: 6 },
-  badgeText: { color: c.primary, fontSize: 12, fontWeight: '600' },
+  badgeText: { color: c.primary, fontSize: 12, fontWeight: '600' },  
 });
 // Compatibilidad: pantallas aún no migradas siguen usando el dark
 export const globalStyles = buildGlobalStyles(colors.dark);

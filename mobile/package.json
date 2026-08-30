@@ -17,7 +17,8 @@
     "react-dom": "19.2.3",
     "react-easy-crop": "^6.2.3",
     "react-native": "0.86.2",
-    "react-native-web": "^0.21.2"
+    "react-native-web": "^0.21.2",
+    "sweetalert2": "^11.26.25"
   },
   "devDependencies": {
     "@types/react": "~19.2.2",
