@@ -24,13 +24,18 @@ export class CategoriesService {
   }
 
   // POST /groups/:groupId/categories (owner/admin)
-  async create(groupId: string, userId: string, dto: { name: string; color?: string }) {
+  async create(
+    groupId: string,
+    userId: string,
+    dto: { name: string; color?: string },
+  ) {
     await this.assertManage(groupId, userId);
 
     const exists = await this.prisma.songCategory.findUnique({
       where: { groupId_name: { groupId, name: dto.name } },
     });
-    if (exists) throw new ConflictException('Ya existe una categoría con ese nombre');
+    if (exists)
+      throw new ConflictException('Ya existe una categoría con ese nombre');
 
     return this.prisma.songCategory.create({
       data: { groupId, name: dto.name, color: dto.color },
@@ -38,8 +43,14 @@ export class CategoriesService {
   }
 
   // PATCH /song-categories/:id (owner/admin)
-  async update(categoryId: string, userId: string, dto: { name?: string; color?: string }) {
-    const category = await this.prisma.songCategory.findUnique({ where: { id: categoryId } });
+  async update(
+    categoryId: string,
+    userId: string,
+    dto: { name?: string; color?: string },
+  ) {
+    const category = await this.prisma.songCategory.findUnique({
+      where: { id: categoryId },
+    });
     if (!category) throw new NotFoundException('Categoría no encontrada');
 
     await this.assertManage(category.groupId, userId);
@@ -53,7 +64,10 @@ export class CategoriesService {
       }
     }
 
-    return this.prisma.songCategory.update({ where: { id: categoryId }, data: dto });
+    return this.prisma.songCategory.update({
+      where: { id: categoryId },
+      data: dto,
+    });
   }
 
   // DELETE /song-categories/:id (owner/admin)
@@ -109,7 +123,9 @@ export class CategoriesService {
 
   // DELETE /songs/:songId/categories/:categoryId (owner/admin)
   async removeFromSong(songId: string, categoryId: string, userId: string) {
-    const song = await this.prisma.song.findFirst({ where: { id: songId, deletedAt: null } });
+    const song = await this.prisma.song.findFirst({
+      where: { id: songId, deletedAt: null },
+    });
     if (!song) throw new NotFoundException('Canción no encontrada');
     await this.assertManage(song.groupId, userId);
 
