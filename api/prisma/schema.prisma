@@ -35,6 +35,8 @@ model User {
   groups           Group[]
   songs            Song[]
   setlists         Setlist[]
+  songNotes        SongNote[]        @relation("SongNotes")
+  favoriteSongs    FavoriteSong[]    @relation("FavoriteSongs")
 
   @@map("users")
 }
@@ -162,6 +164,7 @@ model Group {
   userId      String?
   songs       Song[]
   setlists    Setlist[]
+  categories  SongCategory[]
 
   @@map("groups")
 }
@@ -248,11 +251,14 @@ model Song {
   updatedAt       DateTime  @updatedAt
   deletedAt       DateTime? // soft delete
 
-  group     Group         @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  createdBy User          @relation("SongCreator", fields: [createdById], references: [id], onDelete: Restrict)
-  setlists  SetlistSong[]
-  user      User?         @relation(fields: [userId], references: [id])
-  userId    String?
+  group      Group              @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  createdBy  User               @relation("SongCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  setlists   SetlistSong[]
+  user       User?              @relation(fields: [userId], references: [id])
+  userId     String?
+  categories SongCategoryItem[]
+  notes      SongNote[]
+  favorites  FavoriteSong[]
 
   @@map("songs")
 }
@@ -295,4 +301,66 @@ model SetlistSong {
 
   @@unique([setlistId, songId]) // una canción = una vez por setlist
   @@map("setlist_songs")
+}
+
+// -----------------------------------------------
+// CATEGORÍAS DE CANCIONES (por grupo)
+// -----------------------------------------------
+model SongCategory {
+  id        String   @id @default(uuid())
+  groupId   String
+  name      String
+  color     String? // hex opcional para chips de color
+  createdAt DateTime @default(now())
+
+  group Group              @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  songs SongCategoryItem[]
+
+  @@unique([groupId, name]) // nombres únicos por grupo
+  @@map("song_categories")
+}
+
+// Pivote explícito: canción ↔ categoría (muchos a muchos)
+model SongCategoryItem {
+  songId     String
+  categoryId String
+
+  song     Song         @relation(fields: [songId], references: [id], onDelete: Cascade)
+  category SongCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([songId, categoryId])
+  @@map("song_category_items")
+}
+
+// -----------------------------------------------
+// NOTAS PERSONALES POR MÚSICO (privadas)
+// -----------------------------------------------
+model SongNote {
+  id        String   @id @default(uuid())
+  songId    String
+  userId    String
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  song Song @relation(fields: [songId], references: [id], onDelete: Cascade)
+  user User @relation("SongNotes", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([songId, userId]) // una nota por músico por canción
+  @@map("song_notes")
+}
+
+// -----------------------------------------------
+// FAVORITAS (por usuario)
+// -----------------------------------------------
+model FavoriteSong {
+  userId    String
+  songId    String
+  createdAt DateTime @default(now())
+
+  user User @relation("FavoriteSongs", fields: [userId], references: [id], onDelete: Cascade)
+  song Song @relation(fields: [songId], references: [id], onDelete: Cascade)
+
+  @@id([userId, songId])
+  @@map("favorite_songs")
 }

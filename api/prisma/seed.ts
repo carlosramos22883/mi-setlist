@@ -19,6 +19,7 @@ const DOMAIN_RESOURCES = [
   'songs',
   'setlists',
   'events',
+  'categories',
 ] as const;
 
 const ACTIONS = ['view', 'create', 'edit', 'delete'] as const;
