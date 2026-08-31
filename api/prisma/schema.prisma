@@ -25,12 +25,16 @@ model User {
   verificationTokens  EmailVerificationToken[]
   passwordResetTokens PasswordResetToken[]
   roles               UserRole[]
+  createdSongs        Song[]                   @relation("SongCreator")
+  createdSetlists     Setlist[]                @relation("SetlistCreator")
 
   // Grupos: UNA relación por modelo, cada una con su par claro
   ownedGroups      Group[]           @relation("GroupOwner")
   groupMemberships GroupMember[]
   sentInvitations  GroupInvitation[]
   groups           Group[]
+  songs            Song[]
+  setlists         Setlist[]
 
   @@map("users")
 }
@@ -156,6 +160,8 @@ model Group {
   invitations GroupInvitation[]
   user        User?             @relation(fields: [userId], references: [id])
   userId      String?
+  songs       Song[]
+  setlists    Setlist[]
 
   @@map("groups")
 }
@@ -218,4 +224,75 @@ enum InvitationStatus {
   accepted
   declined
   expired
+}
+
+// -----------------------------------------------
+// CANCIONES (repertorio de un grupo)
+// -----------------------------------------------
+model Song {
+  id              String    @id @default(uuid())
+  groupId         String
+  title           String
+  artist          String?
+  author          String?
+  lyrics          String    @default("")
+  chordsData      Json? // estructura de acordes (para más adelante)
+  songKey         String?   @map("key") // tonalidad (G, Am, C...)
+  bpm             Int?
+  durationSeconds Int?
+  language        String?
+  genre           String?
+  coverPath       String? // ruta relativa en storage
+  createdById     String
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime? // soft delete
+
+  group     Group         @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  createdBy User          @relation("SongCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  setlists  SetlistSong[]
+  user      User?         @relation(fields: [userId], references: [id])
+  userId    String?
+
+  @@map("songs")
+}
+
+// -----------------------------------------------
+// SETLISTS (repertorios ordenados)
+// -----------------------------------------------
+model Setlist {
+  id          String    @id @default(uuid())
+  groupId     String
+  name        String
+  description String?
+  createdById String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  group     Group         @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  createdBy User          @relation("SetlistCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  songs     SetlistSong[]
+  user      User?         @relation(fields: [userId], references: [id])
+  userId    String?
+
+  @@map("setlists")
+}
+
+// -----------------------------------------------
+// PIVOTE: setlist ↔ canción (muchos a muchos + orden)
+// -----------------------------------------------
+model SetlistSong {
+  id        String  @id @default(uuid())
+  setlistId String
+  songId    String
+  position  Int // orden dentro del setlist
+  customKey String? // tonalidad específica para ESTE setlist
+  notes     String? // notas específicas para ESTE setlist
+
+  setlist Setlist @relation(fields: [setlistId], references: [id], onDelete: Cascade)
+  song    Song    @relation(fields: [songId], references: [id], onDelete: Cascade)
+
+  @@unique([setlistId, songId]) // una canción = una vez por setlist
+  @@map("setlist_songs")
 }

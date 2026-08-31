@@ -11,6 +11,8 @@ import { UsersModule } from './users/users.module';
 import { RolesModule } from './roles/roles.module';
 import { UploadsModule } from './uploads/uploads.module';
 import { GroupsModule } from './groups/groups.module';
+import { SongsModule } from './songs/songs.module';
+import { SetlistsModule } from './setlist/setlists.module';
 
 @Module({
   imports: [
@@ -24,6 +26,8 @@ import { GroupsModule } from './groups/groups.module';
     RolesModule,
     UploadsModule,
     GroupsModule,
+    SongsModule,
+    SetlistsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
