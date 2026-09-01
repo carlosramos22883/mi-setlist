@@ -13,6 +13,7 @@ import { UploadsModule } from './uploads/uploads.module';
 import { GroupsModule } from './groups/groups.module';
 import { SongsModule } from './songs/songs.module';
 import { SetlistsModule } from './setlist/setlists.module';
+import { EventsModule } from './events/events.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { SetlistsModule } from './setlist/setlists.module';
     GroupsModule,
     SongsModule,
     SetlistsModule,
+    EventsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
