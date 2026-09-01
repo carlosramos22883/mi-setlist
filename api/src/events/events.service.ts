@@ -180,6 +180,80 @@ export class EventsService {
   }
 
   // ---------------------------------------------------------
+  // PUT /events/:id/attend — confirmar/declinar/tal vez (personal)
+  // ---------------------------------------------------------
+  async setAttendance(eventId: string, userId: string, status: string) {
+    const event = await this.prisma.event.findFirst({
+      where: { id: eventId, deletedAt: null },
+    });
+    if (!event) throw new NotFoundException('Evento no encontrado');
+    await this.assertMember(event.groupId, userId);
+
+    return this.prisma.eventAttendee.upsert({
+      where: { eventId_userId: { eventId, userId } },
+      update: { status },
+      create: { eventId, userId, status },
+      include: { user: { select: { id: true, name: true, avatarPath: true } } },
+    });
+  }
+
+  // ---------------------------------------------------------
+  // DELETE /events/:id/attend — quitar mi respuesta (personal)
+  // ---------------------------------------------------------
+  async removeAttendance(eventId: string, userId: string) {
+    const event = await this.prisma.event.findFirst({
+      where: { id: eventId, deletedAt: null },
+    });
+    if (!event) throw new NotFoundException('Evento no encontrado');
+    await this.assertMember(event.groupId, userId);
+
+    await this.prisma.eventAttendee.deleteMany({ where: { eventId, userId } });
+    return { message: 'Respuesta eliminada' };
+  }
+
+  // ---------------------------------------------------------
+  // POST /events/:id/setlists — asociar setlist (owner/admin)
+  // ---------------------------------------------------------
+  async addSetlist(eventId: string, setlistId: string, userId: string) {
+    const event = await this.prisma.event.findFirst({
+      where: { id: eventId, deletedAt: null },
+    });
+    if (!event) throw new NotFoundException('Evento no encontrado');
+    await this.assertManage(event.groupId, userId);
+
+    const setlist = await this.prisma.setlist.findFirst({
+      where: { id: setlistId, deletedAt: null },
+    });
+    if (!setlist) throw new NotFoundException('Setlist no encontrado');
+    if (setlist.groupId !== event.groupId) {
+      throw new BadRequestException('El setlist no pertenece a este grupo');
+    }
+
+    await this.prisma.eventSetlist.upsert({
+      where: { eventId_setlistId: { eventId, setlistId } },
+      update: {},
+      create: { eventId, setlistId },
+    });
+    return { message: 'Setlist asociado al evento' };
+  }
+
+  // ---------------------------------------------------------
+  // DELETE /events/:id/setlists/:setlistId — desasociar (owner/admin)
+  // ---------------------------------------------------------
+  async removeSetlist(eventId: string, setlistId: string, userId: string) {
+    const event = await this.prisma.event.findFirst({
+      where: { id: eventId, deletedAt: null },
+    });
+    if (!event) throw new NotFoundException('Evento no encontrado');
+    await this.assertManage(event.groupId, userId);
+
+    await this.prisma.eventSetlist.deleteMany({
+      where: { eventId, setlistId },
+    });
+    return { message: 'Setlist desasociado' };
+  }
+
+  // ---------------------------------------------------------
   // Helpers de permiso contextual
   // ---------------------------------------------------------
   private async assertGroupActive(groupId: string) {

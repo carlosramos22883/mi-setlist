@@ -9,6 +9,7 @@ import {
   Param,
   Patch,
   Post,
+  Put,
   Query,
   UseGuards,
 } from '@nestjs/common';
@@ -23,6 +24,8 @@ import {
   CreateEventDto,
   QueryEventsDto,
   UpdateEventDto,
+  SetAttendanceDto,
+  AddSetlistToEventDto,
 } from './dto/event.dto';
 
 @ApiTags('events')
@@ -72,5 +75,43 @@ export class EventsController {
   @Permissions('events.delete')
   remove(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
     return this.eventsService.remove(id, user.sub);
+  }
+
+  // ---------- ASISTENCIA (acciones personales) ----------
+  @Put('events/:id/attend')
+  @Permissions('events.view')
+  setAttendance(
+    @Param('id') id: string,
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: SetAttendanceDto,
+  ) {
+    return this.eventsService.setAttendance(id, user.sub, dto.status);
+  }
+
+  @Delete('events/:id/attend')
+  @Permissions('events.view')
+  removeAttendance(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
+    return this.eventsService.removeAttendance(id, user.sub);
+  }
+
+  // ---------- SETLISTS DEL EVENTO (gestión) ----------
+  @Post('events/:id/setlists')
+  @Permissions('events.edit')
+  addSetlist(
+    @Param('id') id: string,
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: AddSetlistToEventDto,
+  ) {
+    return this.eventsService.addSetlist(id, dto.setlistId, user.sub);
+  }
+
+  @Delete('events/:id/setlists/:setlistId')
+  @Permissions('events.edit')
+  removeSetlist(
+    @Param('id') id: string,
+    @Param('setlistId') setlistId: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.eventsService.removeSetlist(id, setlistId, user.sub);
   }
 }

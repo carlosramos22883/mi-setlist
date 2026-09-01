@@ -10,6 +10,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  IsIn,
   Max,
   Min,
 } from 'class-validator';
@@ -104,4 +105,23 @@ export class QueryEventsDto {
   @Min(1)
   @Max(50)
   limit?: number;
+}
+
+// ---------------------------------------------------------
+// PUT /events/:id/attend — mi respuesta de asistencia
+// ---------------------------------------------------------
+export class SetAttendanceDto {
+  @IsIn(['confirmed', 'declined', 'maybe'], {
+    message: 'Estado inválido (confirmed | declined | maybe)',
+  })
+  status!: 'confirmed' | 'declined' | 'maybe';
+}
+
+// ---------------------------------------------------------
+// POST /events/:id/setlists — asociar setlist al evento
+// ---------------------------------------------------------
+export class AddSetlistToEventDto {
+  @IsString()
+  @IsNotEmpty()
+  setlistId!: string;
 }
