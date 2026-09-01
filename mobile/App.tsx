@@ -17,6 +17,10 @@ import UsersAdminScreen from './src/screens/UsersAdminScreen';
 import RolesAdminScreen from './src/screens/RolesAdminScreen';
 import GroupsScreen from './src/screens/GroupsScreen';
 import GroupDetailScreen from './src/screens/GroupDetailScreen';
+import SongsScreen from './src/screens/SongsScreen';
+import SongDetailScreen from './src/screens/SongDetailScreen';
+import SetlistsScreen from './src/screens/SetlistsScreen';
+import SetlistDetailScreen from './src/screens/SetlistDetailScreen';
 import { ThemeProvider } from './src/context/ThemeContext';
 import AppShell from './src/components/AppShell';
 import { HeaderActionsProvider } from './src/context/HeaderActionsContext';
@@ -55,6 +59,7 @@ function Root() {
 
   // ---------- USUARIO LOGUEADO ----------
     if (user) {
+    const myRole = (params.myRole ?? 'member') as 'owner' | 'admin' | 'member';
     let content;
     switch (screen) {
       case 'profile':
@@ -73,9 +78,79 @@ function Root() {
         content = <GroupDetailScreen
           groupId={params.groupId}
           onBack={() => navigate('groups')}
-          onHeaderActions={(actions) => setHeaderActions(actions)}
-        />;
-        break;
+          onNavigate={(to, p) => navigate(to as ScreenName, p)}
+          />;
+      break;
+      case 'songs':
+        content = (
+          <SongsScreen
+            groupId={params.groupId!}
+            groupName={params.groupName ?? ''}
+            myRole={myRole}
+            onBack={() => navigate('groupDetail', { groupId: params.groupId })}
+            onOpenSong={(songId) =>
+              navigate('songDetail', {
+                groupId: params.groupId,
+                groupName: params.groupName,
+                myRole: params.myRole,
+                songId,
+              })
+            }
+          />
+        );
+      break;
+      case 'songDetail':
+        content = (
+          <SongDetailScreen
+            songId={params.songId!}
+            groupId={params.groupId!}
+            groupName={params.groupName ?? ''}
+            myRole={myRole}
+            onBack={() =>
+              navigate('songs', {
+                groupId: params.groupId,
+                groupName: params.groupName,
+                myRole: params.myRole,
+              })
+            }
+          />
+        );
+      break;
+      case 'setlists':
+        content = (
+          <SetlistsScreen
+            groupId={params.groupId!}
+            groupName={params.groupName ?? ''}
+            myRole={myRole}
+            onBack={() => navigate('groupDetail', { groupId: params.groupId })}
+            onOpenSetlist={(setlistId) =>
+              navigate('setlistDetail', {
+                groupId: params.groupId,
+                groupName: params.groupName,
+                myRole: params.myRole,
+                setlistId,
+              })
+            }
+          />
+        );
+      break;
+            case 'setlistDetail':
+        content = (
+          <SetlistDetailScreen
+            setlistId={params.setlistId!}
+            groupId={params.groupId!}
+            groupName={params.groupName ?? ''}
+            myRole={myRole}
+            onBack={() =>
+              navigate('setlists', {
+                groupId: params.groupId,
+                groupName: params.groupName,
+                myRole: params.myRole,
+              })
+            }
+          />
+        );
+      break;
       default:
         content = <HomeScreen onNavigate={navigate} />;
     }

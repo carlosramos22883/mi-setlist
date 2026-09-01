@@ -17,7 +17,11 @@ export type ScreenName =
   | 'rolesAdmin'   // crud de roles 
   | 'groups'        // crud de grupos
   | 'createGroup'   // crear grupo
-  | 'groupDetail';  // detalle de grupo
+  | 'groupDetail'  // detalle de grupo
+  | 'songs'        //crud canciones
+  | 'songDetail'   //detalle de canción
+  | 'setlists'        //crud setlist
+  | 'setlistDetail';  //detalle de setlist
 
 export function useNavigation(initial: ScreenName = 'auth') {
   const [screen, setScreen] = useState<ScreenName>(initial);

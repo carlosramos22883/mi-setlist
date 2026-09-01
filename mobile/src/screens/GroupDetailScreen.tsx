@@ -30,6 +30,7 @@ const API_URL = 'http://localhost:3000/api/v1';
 interface Props {
   groupId: string;
   onBack: () => void;
+  onNavigate: (screen: string, params?: any) => void;
 }
 
 const TYPE_LABELS: Record<string, string> = {
@@ -46,7 +47,7 @@ const ROLE_LABELS: Record<string, string> = {
   member: '🎵 Miembro',
 };
 
-export default function GroupDetailScreen({ groupId, onBack }: Props) {
+export default function GroupDetailScreen({ groupId, onBack, onNavigate }: Props) {
   const { setActions } = useHeaderActions();
   const { c, g: globalStyles } = useTheme();
   const styles = buildStyles(c);
@@ -242,27 +243,55 @@ export default function GroupDetailScreen({ groupId, onBack }: Props) {
           <Text style={styles.myRoleBadge}>Tu rol: {ROLE_LABELS[group.myRole]}</Text>
         </View>
 
-        {/* Acciones del grupo (🆕 usan doble capa de permisos) */}
+        {/* Acciones del grupo (todas del mismo tamaño) */}
         <View style={styles.actionsRow}>
+          <TouchableOpacity
+            style={[globalStyles.button, styles.actionBtn]}
+            onPress={() =>
+              onNavigate('songs', {
+                groupId: group.id,
+                groupName: group.name,
+                myRole: group.myRole,
+              })
+            }
+          >
+            <Text style={globalStyles.buttonText}>🎵 Canciones</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[globalStyles.button, styles.actionBtn]}
+            onPress={() =>
+              onNavigate('setlists', {
+                groupId: group.id,
+                groupName: group.name,
+                myRole: group.myRole,
+              })
+            }
+          >
+            <Text style={globalStyles.buttonText}>🎼 Setlists</Text>
+          </TouchableOpacity>
+
           {canInvite && (
             <TouchableOpacity
-              style={globalStyles.button}
+              style={[globalStyles.button, styles.actionBtn]}
               onPress={() => setInviteModalVisible(true)}
             >
               <Text style={globalStyles.buttonText}>+ Invitar</Text>
             </TouchableOpacity>
           )}
+
           {canLeave && (
             <TouchableOpacity
-              style={[globalStyles.buttonDanger, styles.dangerBtn]}
+              style={[globalStyles.buttonDanger, styles.actionBtn]}
               onPress={handleLeave}
             >
               <Text style={globalStyles.buttonText}>Abandonar</Text>
             </TouchableOpacity>
           )}
+
           {canDelete && (
             <TouchableOpacity
-              style={[globalStyles.buttonDanger, styles.dangerBtn]}
+              style={[globalStyles.buttonDanger, styles.actionBtn]}
               onPress={handleDeleteGroup}
             >
               <Text style={globalStyles.buttonText}>Eliminar grupo</Text>
@@ -420,8 +449,19 @@ const buildStyles = (c: Palette) =>
       fontSize: 12,
       fontWeight: '700',
     },
-    actionsRow: { flexDirection: 'row', gap: 8, marginBottom: 20, flexWrap: 'wrap' },
-    dangerBtn: { flex: 1 },
+    actionsRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 10,
+      marginBottom: 20,
+    },
+    actionBtn: {
+      flexGrow: 1,
+      flexShrink: 1,
+      flexBasis: 150,
+      minWidth: 150,
+      paddingVertical: 12,
+    },  
     sectionTitle: {
       color: c.textSecondary,
       fontSize: 12,
