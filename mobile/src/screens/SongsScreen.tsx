@@ -24,6 +24,7 @@ import PaginationBar from '../components/PaginationBar';
 import EmptyState from '../components/EmptyState';
 import RowActions from '../components/RowActions';
 import SongFormModal from '../components/SongFormModal';
+import { Ionicons } from '@expo/vector-icons';
 
 interface Props {
   groupId: string;
@@ -50,6 +51,7 @@ export default function SongsScreen({
   const [refreshing, setRefreshing] = useState(false);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [filterFavs, setFilterFavs] = useState(false);
 
   const [modalVisible, setModalVisible] = useState(false);
   const [editingSong, setEditingSong] = useState<Song | null>(null);
@@ -66,6 +68,7 @@ export default function SongsScreen({
         page,
         limit: 10,
         search: search.trim() || undefined,
+        favoritesOnly: filterFavs || undefined,
       });
       setSongs(res.data);
       setTotalPages(res.meta.totalPages);
@@ -73,7 +76,7 @@ export default function SongsScreen({
       setLoading(false);
       setRefreshing(false);
     }
-  }, [groupId, page, search]);
+  }, [groupId, page, search, filterFavs]);
 
   useEffect(() => {
     loadSongs();
@@ -181,6 +184,22 @@ function renderSong({ item }: { item: Song }) {
         createLabel="+ Nueva canción"
       />
 
+      <View style={s.filterRow}>
+        <TouchableOpacity
+          style={[s.filterChip, filterFavs && s.filterChipActive]}
+          onPress={() => { setFilterFavs((v) => !v); setPage(1); }}
+        >
+          <Ionicons
+            name={filterFavs ? 'heart' : 'heart-outline'}
+            size={14}
+            color={filterFavs ? '#FFFFFF' : c.textSecondary}
+          />
+          <Text style={[s.filterChipText, filterFavs && s.filterChipTextActive]}>
+            Solo mis favoritas
+          </Text>
+        </TouchableOpacity>
+      </View>
+
       {loading && songs.length === 0 ? (
         <ActivityIndicator color={c.primary} style={s.loader} />
       ) : (
@@ -244,4 +263,19 @@ const buildStyles = (c: Palette) =>
       paddingVertical: 3,
     },
     chipText: { color: c.textSecondary, fontSize: 11, fontWeight: '600' },
+    filterRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
+    filterChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      backgroundColor: c.surface2,
+      borderRadius: 9999,
+      paddingHorizontal: 14,
+      paddingVertical: 7,
+      borderWidth: 1,
+      borderColor: c.border,
+    },
+    filterChipActive: { backgroundColor: c.primary, borderColor: c.primary },
+    filterChipText: { color: c.textSecondary, fontSize: 13, fontWeight: '600' },
+    filterChipTextActive: { color: '#FFFFFF' },
   });

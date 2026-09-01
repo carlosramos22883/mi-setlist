@@ -41,7 +41,7 @@ export interface SongNote {
 // GET /groups/:groupId/songs
 export async function listSongs(
   groupId: string,
-  params: { search?: string; page?: number; limit?: number } = {},
+  params: { search?: string; page?: number; limit?: number; favoritesOnly?: boolean } = {},
 ) {
   const { data } = await api.get<SongsPage>(`/groups/${groupId}/songs`, { params });
   return data;
