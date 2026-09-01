@@ -91,6 +91,11 @@ export class QuerySongsDto {
   @IsString()
   search?: string;
 
+  @ApiPropertyOptional({ default: false, description: 'Solo mis favoritas' })
+  @IsOptional()
+  @Type(() => Boolean)
+  favoritesOnly?: boolean;
+
   @ApiPropertyOptional({ example: 1, default: 1 })
   @IsOptional()
   @Type(() => Number)

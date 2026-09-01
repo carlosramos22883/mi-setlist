@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateSongDto, QuerySongsDto, UpdateSongDto } from './dto/song.dto';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class SongsService {
@@ -36,7 +37,7 @@ export class SongsService {
     const page = query.page ?? 1;
     const limit = query.limit ?? 10;
 
-    const where = {
+    const where: Prisma.SongWhereInput = {
       groupId,
       deletedAt: null,
       ...(query.search
@@ -58,6 +59,15 @@ export class SongsService {
           }
         : {}),
     };
+
+    // Solo favoritas: filtra por IDs en favorite_songs del usuario
+    if (query.favoritesOnly) {
+      const favs = await this.prisma.favoriteSong.findMany({
+        where: { userId, song: { groupId, deletedAt: null } },
+        select: { songId: true },
+      });
+      where.id = { in: favs.map((f) => f.songId) };
+    }
 
     const [songs, total] = await Promise.all([
       this.prisma.song.findMany({

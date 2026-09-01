@@ -37,6 +37,8 @@ model User {
   setlists         Setlist[]
   songNotes        SongNote[]        @relation("SongNotes")
   favoriteSongs    FavoriteSong[]    @relation("FavoriteSongs")
+  createdEvents    Event[]           @relation("EventCreator")
+  eventAttendees   EventAttendee[]   @relation("EventAttendees")
 
   @@map("users")
 }
@@ -165,6 +167,7 @@ model Group {
   songs       Song[]
   setlists    Setlist[]
   categories  SongCategory[]
+  events      Event[]
 
   @@map("groups")
 }
@@ -276,11 +279,12 @@ model Setlist {
   updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
 
-  group     Group         @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  createdBy User          @relation("SetlistCreator", fields: [createdById], references: [id], onDelete: Restrict)
-  songs     SetlistSong[]
-  user      User?         @relation(fields: [userId], references: [id])
-  userId    String?
+  group         Group          @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  createdBy     User           @relation("SetlistCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  songs         SetlistSong[]
+  user          User?          @relation(fields: [userId], references: [id])
+  userId        String?
+  eventSetlists EventSetlist[]
 
   @@map("setlists")
 }
@@ -363,4 +367,64 @@ model FavoriteSong {
 
   @@id([userId, songId])
   @@map("favorite_songs")
+}
+
+// -----------------------------------------------
+// EVENTOS (ensayos, conciertos, presentaciones)
+// -----------------------------------------------
+model Event {
+  id          String    @id @default(uuid())
+  groupId     String
+  title       String
+  description String?
+  location    String? // nombre del lugar (ej: "Teatro Municipal")
+  address     String? // dirección completa
+  latitude    Float? // coordenadas del mapa
+  longitude   Float?
+  startsAt    DateTime // fecha y hora de inicio
+  endsAt      DateTime? // opcional: si tiene fin
+  createdById String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  group     Group           @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  createdBy User            @relation("EventCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  attendees EventAttendee[]
+  setlists  EventSetlist[]
+
+  @@map("events")
+}
+
+// -----------------------------------------------
+// ASISTENCIA (confirmar/declinar/tal vez)
+// -----------------------------------------------
+model EventAttendee {
+  id        String   @id @default(uuid())
+  eventId   String
+  userId    String
+  status    String   @default("pending") // pending | confirmed | declined | maybe
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user  User  @relation("EventAttendees", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId]) // una respuesta por usuario por evento
+  @@map("event_attendees")
+}
+
+// -----------------------------------------------
+// PIVOTE: evento ↔ setlist (repertorios para el evento)
+// -----------------------------------------------
+model EventSetlist {
+  id        String @id @default(uuid())
+  eventId   String
+  setlistId String
+
+  event   Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  setlist Setlist @relation(fields: [setlistId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, setlistId])
+  @@map("event_setlists")
 }
