@@ -563,4 +563,10 @@ const buildStyles = (c: Palette) =>
     },
     smallLabel: { color: c.textMuted, fontSize: 12 },
     smallValue: { color: c.textSecondary, fontSize: 12, fontWeight: '600' },
+        lyricsHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 12,
+    },
   });

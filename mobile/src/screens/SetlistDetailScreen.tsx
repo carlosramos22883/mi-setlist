@@ -209,14 +209,14 @@ export default function SetlistDetailScreen({
           {canManage && (
             <View style={s.actionsRow}>
               <TouchableOpacity
-                style={globalStyles.button}
+                style={[globalStyles.button, s.halfBtn]}
                 onPress={() => setEditModalVisible(true)}
               >
                 <Text style={globalStyles.buttonText}>✏️ Editar</Text>
               </TouchableOpacity>
               {canDeleteSetlist && (
                 <TouchableOpacity
-                  style={[globalStyles.buttonDanger, s.dangerBtn]}
+                  style={[globalStyles.buttonDanger, s.halfBtn]}
                   onPress={handleDeleteSetlist}
                 >
                   <Text style={globalStyles.buttonText}>🗑️ Eliminar</Text>
@@ -246,17 +246,12 @@ export default function SetlistDetailScreen({
               <View style={s.positionBadge}>
                 <Text style={s.positionText}>{index + 1}</Text>
               </View>
-
               <View style={s.songInfo}>
                 <Text style={s.songTitle}>{link.song.title}</Text>
-                {link.song.artist && (
-                  <Text style={s.songArtist}>{link.song.artist}</Text>
-                )}
+                {link.song.artist && <Text style={s.songArtist}>{link.song.artist}</Text>}
                 <View style={s.chipsRow}>
                   <View style={s.chip}>
-                    <Text style={s.chipText}>
-                      🎵 {link.customKey ?? link.song.songKey ?? '—'}
-                    </Text>
+                    <Text style={s.chipText}>🎵 {link.customKey ?? link.song.songKey ?? '—'}</Text>
                   </View>
                   {link.notes && (
                     <View style={s.chip}>
@@ -265,7 +260,6 @@ export default function SetlistDetailScreen({
                   )}
                 </View>
               </View>
-
               {canManage && (
                 <View style={s.rowActions}>
                   <TouchableOpacity
@@ -402,8 +396,8 @@ const buildStyles = (c: Palette) =>
     chipsRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
     chip: { backgroundColor: c.surface2, borderRadius: 9999, paddingHorizontal: 12, paddingVertical: 6 },
     chipText: { color: c.textSecondary, fontSize: 12, fontWeight: '600' },
-    actionsRow: { flexDirection: 'row', gap: 12, marginTop: 16 },
-    dangerBtn: { flex: 1 },
+    actionsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 16 },
+    halfBtn: { flex: 1, minWidth: 150, paddingVertical: 12 },
     addBtn: { marginBottom: 20 },
     sectionTitle: {
       color: c.textSecondary,
@@ -487,5 +481,5 @@ const buildStyles = (c: Palette) =>
       borderWidth: 1,
       borderColor: c.border,
     },
-    notesInput: { minHeight: 70, textAlignVertical: 'top' },
+    notesInput: { minHeight: 70, textAlignVertical: 'top' },    
   });
