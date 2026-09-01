@@ -106,3 +106,12 @@ export class QuerySongsDto {
   @Max(50)
   limit?: number;
 }
+
+// ---------------------------------------------------------
+// PUT /songs/:id/notes/mine
+// ---------------------------------------------------------
+export class UpsertNoteDto {
+  @IsString()
+  @IsNotEmpty({ message: 'La nota no puede estar vacía' })
+  content!: string;
+}

@@ -65,13 +65,27 @@ export class SongsService {
         orderBy: { title: 'asc' },
         skip: (page - 1) * limit,
         take: limit,
-        include: { createdBy: { select: { id: true, name: true } } },
+        include: {
+          createdBy: { select: { id: true, name: true } },
+          categories: { include: { category: true } },
+        },
       }),
       this.prisma.song.count({ where }),
     ]);
 
+    // ¿Cuáles de estas canciones son favoritas del usuario?
+    const favs = await this.prisma.favoriteSong.findMany({
+      where: { userId, songId: { in: songs.map((s) => s.id) } },
+      select: { songId: true },
+    });
+    const favSet = new Set(favs.map((f) => f.songId));
+
     return {
-      data: songs,
+      data: songs.map((s) => ({
+        ...s,
+        categories: s.categories.map((i) => i.category), // 🆕 chips en la UI
+        isFavorite: favSet.has(s.id), // 🆕 corazón en la UI
+      })),
       meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
     };
   }
@@ -82,12 +96,24 @@ export class SongsService {
   async findOne(songId: string, userId: string) {
     const song = await this.prisma.song.findFirst({
       where: { id: songId, deletedAt: null },
-      include: { createdBy: { select: { id: true, name: true } } },
+      include: {
+        createdBy: { select: { id: true, name: true } },
+        categories: { include: { category: true } },
+        favorites: { where: { userId }, select: { userId: true } }, // la mía
+        _count: { select: { favorites: true } }, // total
+      },
     });
     if (!song) throw new NotFoundException('Canción no encontrada');
 
     await this.assertMember(song.groupId, userId);
-    return song;
+
+    const { favorites, _count, categories, ...rest } = song;
+    return {
+      ...rest,
+      categories: categories.map((i) => i.category),
+      isFavorite: favorites.length > 0,
+      favoriteCount: _count.favorites,
+    };
   }
 
   // ---------------------------------------------------------
@@ -124,6 +150,71 @@ export class SongsService {
       data: { deletedAt: new Date() },
     });
     return { message: 'Canción eliminada' };
+  }
+
+  // ---------------------------------------------------------
+  // NOTAS PERSONALES (acciones personales: basta ser miembro)
+  // ---------------------------------------------------------
+  async getMyNote(songId: string, userId: string) {
+    await this.assertSongAndMember(songId, userId);
+    return this.prisma.songNote.findUnique({
+      where: { songId_userId: { songId, userId } },
+    });
+  }
+
+  async upsertMyNote(songId: string, userId: string, content: string) {
+    await this.assertSongAndMember(songId, userId);
+    return this.prisma.songNote.upsert({
+      where: { songId_userId: { songId, userId } },
+      update: { content },
+      create: { songId, userId, content },
+    });
+  }
+
+  async deleteMyNote(songId: string, userId: string) {
+    await this.assertSongAndMember(songId, userId);
+    await this.prisma.songNote.deleteMany({ where: { songId, userId } });
+    return { message: 'Nota eliminada' };
+  }
+
+  // ---------------------------------------------------------
+  // FAVORITAS (acciones personales)
+  // ---------------------------------------------------------
+  async addFavorite(songId: string, userId: string) {
+    await this.assertSongAndMember(songId, userId);
+    await this.prisma.favoriteSong.upsert({
+      where: { userId_songId: { userId, songId } },
+      update: {},
+      create: { userId, songId },
+    });
+    return { message: 'Agregada a favoritas' };
+  }
+
+  async removeFavorite(songId: string, userId: string) {
+    await this.assertSongAndMember(songId, userId);
+    await this.prisma.favoriteSong.deleteMany({ where: { userId, songId } });
+    return { message: 'Quitada de favoritas' };
+  }
+
+  // IDs de mis favoritas dentro de un grupo (para el filtro de la UI)
+  async listMyFavoriteIds(groupId: string, userId: string) {
+    await this.assertGroupActive(groupId);
+    await this.assertMember(groupId, userId);
+    const favs = await this.prisma.favoriteSong.findMany({
+      where: { userId, song: { groupId, deletedAt: null } },
+      select: { songId: true },
+    });
+    return favs.map((f) => f.songId);
+  }
+
+  // Helper: canción existe + usuario es miembro de su grupo
+  private async assertSongAndMember(songId: string, userId: string) {
+    const song = await this.prisma.song.findFirst({
+      where: { id: songId, deletedAt: null },
+    });
+    if (!song) throw new NotFoundException('Canción no encontrada');
+    await this.assertMember(song.groupId, userId);
+    return song;
   }
 
   // ---------------------------------------------------------

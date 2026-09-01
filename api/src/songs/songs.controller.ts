@@ -8,6 +8,7 @@ import {
   Get,
   Param,
   Patch,
+  Put,
   Post,
   Query,
   UseGuards,
@@ -19,7 +20,12 @@ import type { JwtPayload } from '../auth/jwt-payload';
 import { Permissions } from '../common/decorators/permissions.decorator';
 import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { SongsService } from './songs.service';
-import { CreateSongDto, QuerySongsDto, UpdateSongDto } from './dto/song.dto';
+import {
+  CreateSongDto,
+  QuerySongsDto,
+  UpdateSongDto,
+  UpsertNoteDto,
+} from './dto/song.dto';
 
 @ApiTags('songs')
 @ApiBearerAuth()
@@ -70,5 +76,50 @@ export class SongsController {
   @Permissions('songs.delete')
   remove(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
     return this.songsService.remove(id, user.sub);
+  }
+
+  // ---------- NOTAS PERSONALES ----------
+  @Get('songs/:id/notes/mine')
+  @Permissions('songs.view')
+  getMyNote(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
+    return this.songsService.getMyNote(id, user.sub);
+  }
+
+  @Put('songs/:id/notes/mine')
+  @Permissions('songs.view')
+  upsertMyNote(
+    @Param('id') id: string,
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: UpsertNoteDto,
+  ) {
+    return this.songsService.upsertMyNote(id, user.sub, dto.content);
+  }
+
+  @Delete('songs/:id/notes/mine')
+  @Permissions('songs.view')
+  deleteMyNote(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
+    return this.songsService.deleteMyNote(id, user.sub);
+  }
+
+  // ---------- FAVORITAS ----------
+  @Post('songs/:id/favorite')
+  @Permissions('songs.view')
+  addFavorite(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
+    return this.songsService.addFavorite(id, user.sub);
+  }
+
+  @Delete('songs/:id/favorite')
+  @Permissions('songs.view')
+  removeFavorite(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
+    return this.songsService.removeFavorite(id, user.sub);
+  }
+
+  @Get('groups/:groupId/favorites/mine')
+  @Permissions('songs.view')
+  listMyFavoriteIds(
+    @Param('groupId') groupId: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.songsService.listMyFavoriteIds(groupId, user.sub);
   }
 }
