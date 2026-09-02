@@ -32,6 +32,7 @@ interface Props {
   groupName: string;
   myRole: 'owner' | 'admin' | 'member';
   onBack: () => void;
+  onStage: () => void;
 }
 
 export default function SongDetailScreen({
@@ -40,6 +41,7 @@ export default function SongDetailScreen({
   groupName,
   myRole,
   onBack,
+  onStage,
 }: Props) {
   const { can } = useAuth();
   const { c, g: globalStyles } = useTheme();
@@ -360,6 +362,11 @@ export default function SongDetailScreen({
           </View>
         </View>
 
+        {/* 🎸 Modo escenario (cualquier miembro) */}
+        <TouchableOpacity style={s.stageBtn} onPress={onStage}>
+          <Text style={s.stageBtnText}>🎸 Modo escenario</Text>
+        </TouchableOpacity>
+
         {/* Acciones */}
         <View style={s.actionsRow}>
           {canEdit && (
@@ -569,4 +576,12 @@ const buildStyles = (c: Palette) =>
       alignItems: 'center',
       marginBottom: 12,
     },
+    stageBtn: {
+      backgroundColor: c.primary,
+      borderRadius: 9999,
+      alignItems: 'center',
+      paddingVertical: 14,
+      marginBottom: 12,
+    },
+    stageBtnText: { color: '#FFFFFF', fontSize: 15, fontWeight: '800' },
   });

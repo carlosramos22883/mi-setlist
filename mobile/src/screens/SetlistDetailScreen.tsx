@@ -25,10 +25,11 @@ interface Props {
   groupName: string;
   myRole: 'owner' | 'admin' | 'member';
   onBack: () => void;
+  onStage: () => void;
 }
 
 export default function SetlistDetailScreen({
-  setlistId, groupId, groupName, myRole, onBack,
+  setlistId, groupId, groupName, myRole, onBack, onStage,
 }: Props) {
   const { can } = useAuth();
   const { c, g: globalStyles } = useTheme();
@@ -225,13 +226,14 @@ export default function SetlistDetailScreen({
             </View>
           )}
         </View>
+        {/* 🎸 Modo escenario (cualquier miembro) */}
+        <TouchableOpacity style={s.stageBtn} onPress={onStage}>
+          <Text style={s.stageBtnText}>🎸 Modo escenario</Text>
+        </TouchableOpacity>
 
         {/* Agregar canción */}
         {canManage && (
-          <TouchableOpacity
-            style={[globalStyles.button, s.addBtn]}
-            onPress={openAddModal}
-          >
+          <TouchableOpacity style={[globalStyles.button, s.addBtn]} onPress={openAddModal}>
             <Text style={globalStyles.buttonText}>+ Agregar canción</Text>
           </TouchableOpacity>
         )}
@@ -482,4 +484,12 @@ const buildStyles = (c: Palette) =>
       borderColor: c.border,
     },
     notesInput: { minHeight: 70, textAlignVertical: 'top' },    
+    stageBtn: {
+      backgroundColor: c.primary,
+      borderRadius: 9999,
+      alignItems: 'center',
+      paddingVertical: 14,
+      marginBottom: 12,
+    },
+    stageBtnText: { color: '#FFFFFF', fontSize: 15, fontWeight: '800' },
   });

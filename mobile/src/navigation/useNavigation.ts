@@ -23,7 +23,8 @@ export type ScreenName =
   | 'setlists'        //crud setlist
   | 'setlistDetail'  //detalle de setlist
   | 'events'       // crud setlist 
-  | 'eventDetail'; // detalle de evento
+  | 'eventDetail' // detalle de evento
+  | 'stage';      // pantalla para el modo escenario
 
 
 export function useNavigation(initial: ScreenName = 'auth') {

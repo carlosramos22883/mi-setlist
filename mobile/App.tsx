@@ -23,6 +23,7 @@ import SetlistsScreen from './src/screens/SetlistsScreen';
 import SetlistDetailScreen from './src/screens/SetlistDetailScreen';
 import EventsScreen from './src/screens/EventsScreen';
 import EventDetailScreen from './src/screens/EventDetailScreen';
+import StageScreen from './src/screens/StageScreen';
 import { ThemeProvider } from './src/context/ThemeContext';
 import AppShell from './src/components/AppShell';
 import { HeaderActionsProvider } from './src/context/HeaderActionsContext';
@@ -63,6 +64,33 @@ function Root() {
     if (user) {
     const myRole = (params.myRole ?? 'member') as 'owner' | 'admin' | 'member';
     let content;
+
+    // 🎸 Modo escenario: pantalla inmersiva (sin topbar/footer)
+    if (screen === 'stage') {
+      return (
+        <StageScreen
+          songId={params.songId}
+          setlistId={params.setlistId}
+          groupName={params.groupName ?? ''}
+          onBack={() =>
+            params.setlistId
+              ? navigate('setlistDetail', {
+                  groupId: params.groupId,
+                  groupName: params.groupName,
+                  myRole,
+                  setlistId: params.setlistId,
+                })
+              : navigate('songDetail', {
+                  groupId: params.groupId,
+                  groupName: params.groupName,
+                  myRole,
+                  songId: params.songId,
+                })
+          }
+        />
+      );
+    }
+
     switch (screen) {
       case 'profile':
         content = <ProfileScreen onBack={() => navigate('home')} />;
@@ -101,18 +129,20 @@ function Root() {
           />
         );
       break;
-      case 'songDetail':
+            case 'songDetail':
         content = (
           <SongDetailScreen
             songId={params.songId!}
             groupId={params.groupId!}
             groupName={params.groupName ?? ''}
             myRole={myRole}
-            onBack={() =>
-              navigate('songs', {
+            onBack={() => navigate('songs', { groupId: params.groupId, groupName: params.groupName, myRole })}
+            onStage={() =>   
+              navigate('stage', {
                 groupId: params.groupId,
                 groupName: params.groupName,
-                myRole: params.myRole,
+                myRole,
+                songId: params.songId,
               })
             }
           />
@@ -136,18 +166,20 @@ function Root() {
           />
         );
       break;
-            case 'setlistDetail':
+      case 'setlistDetail':
         content = (
           <SetlistDetailScreen
             setlistId={params.setlistId!}
             groupId={params.groupId!}
             groupName={params.groupName ?? ''}
             myRole={myRole}
-            onBack={() =>
-              navigate('setlists', {
+            onBack={() => navigate('setlists', { groupId: params.groupId, groupName: params.groupName, myRole })}
+            onStage={() =>   
+              navigate('stage', {
                 groupId: params.groupId,
                 groupName: params.groupName,
-                myRole: params.myRole,
+                myRole,
+                setlistId: params.setlistId,
               })
             }
           />
