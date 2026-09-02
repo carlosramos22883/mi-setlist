@@ -7,5 +7,6 @@ import { AuthModule } from '../auth/auth.module';
   imports: [AuthModule],
   controllers: [SetlistsController],
   providers: [SetlistsService],
+  exports: [SetlistsService],
 })
 export class SetlistsModule {}

@@ -12,8 +12,9 @@ import { RolesModule } from './roles/roles.module';
 import { UploadsModule } from './uploads/uploads.module';
 import { GroupsModule } from './groups/groups.module';
 import { SongsModule } from './songs/songs.module';
-import { SetlistsModule } from './setlist/setlists.module';
+import { SetlistsModule } from './setlists/setlists.module';
 import { EventsModule } from './events/events.module';
+import { PdfModule } from './pdf/pdf.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { EventsModule } from './events/events.module';
     SongsModule,
     SetlistsModule,
     EventsModule,
+    PdfModule,
   ],
   controllers: [AppController],
   providers: [AppService],
