@@ -1,10 +1,8 @@
 // ============================================================
-// CHORD LYRICS — letra con acordes encima + tabs (ChordPro)
+// CHORD LYRICS — letra con acordes + tabs, transposición y tamaños
 // ============================================================
-// Acordes: [D]texto [A]texto  → el acorde se pinta encima y el
-//          texto queda LIMPIO (sin corchetes) en ambos modos.
-// Tabs:    líneas que inician con "e|", "B|", "E!" → monoespaciadas.
-// Modo limpio (showChords=false): solo letra, sin notación.
+// Acordes: [D]texto | Tabs: líneas "e|", "B|", "E!" | transpose: semitonos
+// sizeLevel: 1 normal · 2 grande · 3 gigante (escenario)
 import React from 'react';
 import { Platform, StyleSheet, Text, View } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
@@ -16,13 +14,18 @@ interface Segment {
   text: string;
 }
 
-// Detecta tablatura: "e|---", "B|-1-1", "E!---" ...
 const TAB_REGEX = /^[eEbBgGdDaA]\s*[|!]/;
 
-// "[D]Hola [A]mundo" → [{chord:'D', text:'Hola '}, {chord:'A', text:'mundo'}]
-// Los corchetes NUNCA llegan al texto renderizado.
+const SIZES = {
+  1: { lyric: 15, lyricLH: 24, chord: 13, chordLH: 16, tab: 13, tabLH: 18 },
+  2: { lyric: 22, lyricLH: 34, chord: 18, chordLH: 22, tab: 17, tabLH: 24 },
+  3: { lyric: 28, lyricLH: 42, chord: 22, chordLH: 26, tab: 20, tabLH: 28 },
+} as const;
+
+export type SizeLevel = 1 | 2 | 3;
+
 function parseLine(line: string): Segment[] {
-  const parts = line.split(/(\[[^\]]+\])/); // separa y conserva [acordes]
+  const parts = line.split(/(\[[^\]]+\])/);
   const segments: Segment[] = [];
   let pendingChord: string | null = null;
 
@@ -30,20 +33,14 @@ function parseLine(line: string): Segment[] {
     if (!part) continue;
     const m = part.match(/^\[([^\]]+)\]$/);
     if (m) {
-      // Es un marcador de acorde
-      if (pendingChord !== null) {
-        segments.push({ chord: pendingChord, text: '' }); // acorde seguido de acorde
-      }
+      if (pendingChord !== null) segments.push({ chord: pendingChord, text: '' });
       pendingChord = m[1];
     } else {
-      // Es texto: se lleva el acorde pendiente encima
       segments.push({ chord: pendingChord, text: part });
       pendingChord = null;
     }
   }
-  if (pendingChord !== null) {
-    segments.push({ chord: pendingChord, text: '' }); // acorde al final de línea
-  }
+  if (pendingChord !== null) segments.push({ chord: pendingChord, text: '' });
   return segments;
 }
 
@@ -51,20 +48,24 @@ interface Props {
   lyrics: string;
   showChords: boolean;
   transpose?: number;
+  sizeLevel?: SizeLevel;
 }
 
-export default function ChordLyrics({ lyrics, showChords, transpose = 0 }: Props) {
+export default function ChordLyrics({
+  lyrics,
+  showChords,
+  transpose = 0,
+  sizeLevel = 1,
+}: Props) {
   const { c } = useTheme();
-  const s = buildStyles(c);
+  const s = buildStyles(c, sizeLevel);
   const lines = lyrics.split('\n');
 
   return (
     <View>
       {lines.map((line, i) => {
-        // Línea vacía = separador de estrofas
         if (line.trim() === '') return <View key={i} style={s.stanzaGap} />;
 
-        // 🎸 Tablatura: monoespaciada (se oculta en modo limpio)
         if (TAB_REGEX.test(line.trim())) {
           if (!showChords) return null;
           return (
@@ -77,7 +78,6 @@ export default function ChordLyrics({ lyrics, showChords, transpose = 0 }: Props
         const segments = parseLine(line);
         const hasChords = segments.some((seg) => seg.chord !== null);
 
-        // Línea sin acordes, o modo limpio: texto SIN corchetes
         if (!hasChords || !showChords) {
           return (
             <Text key={i} style={s.plainLine}>
@@ -86,12 +86,13 @@ export default function ChordLyrics({ lyrics, showChords, transpose = 0 }: Props
           );
         }
 
-        // Línea con acordes: acorde encima de su sílaba, texto limpio
         return (
           <View key={i} style={s.lineRow}>
             {segments.map((seg, j) => (
-              <View key={j} style={s.segment}>                
-                <Text style={s.chord}>{transposeChord(seg.chord ?? '', transpose)}</Text>
+              <View key={j} style={s.segment}>
+                <Text style={s.chord}>
+                  {seg.chord ? transposeChord(seg.chord, transpose) : ' '}
+                </Text>
                 <Text style={s.segmentText}>{seg.text}</Text>
               </View>
             ))}
@@ -102,23 +103,25 @@ export default function ChordLyrics({ lyrics, showChords, transpose = 0 }: Props
   );
 }
 
-const buildStyles = (c: Palette) =>
-  StyleSheet.create({
-    stanzaGap: { height: 14 },
-    plainLine: { color: c.text, fontSize: 15, lineHeight: 24 },
+const buildStyles = (c: Palette, level: SizeLevel) => {
+  const z = SIZES[level];
+  return StyleSheet.create({
+    stanzaGap: { height: level === 1 ? 14 : 28 },
+    plainLine: { color: c.text, fontSize: z.lyric, lineHeight: z.lyricLH },
     lineRow: {
       flexDirection: 'row',
       flexWrap: 'wrap',
       alignItems: 'flex-end',
-      marginBottom: 4,
+      marginBottom: level === 1 ? 4 : 8,
     },
     segment: { marginRight: 0 },
-    chord: { color: c.accent, fontSize: 13, fontWeight: '800', lineHeight: 16 },
-    segmentText: { color: c.text, fontSize: 15, lineHeight: 22 },
+    chord: { color: c.accent, fontSize: z.chord, fontWeight: '800', lineHeight: z.chordLH },
+    segmentText: { color: c.text, fontSize: z.lyric, lineHeight: z.lyricLH },
     tabLine: {
       color: c.accent,
-      fontSize: 13,
-      lineHeight: 18,
+      fontSize: z.tab,
+      lineHeight: z.tabLH,
       fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
     },
   });
+};
