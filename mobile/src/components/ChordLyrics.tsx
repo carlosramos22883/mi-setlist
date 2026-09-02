@@ -6,7 +6,7 @@
 import React from 'react';
 import { Platform, StyleSheet, Text, View } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
-import type { Palette } from '../constants/theme';
+import { colors, type Palette } from '../constants/theme';
 import { transposeChord } from '../utils/transpose';
 
 interface Segment {
@@ -49,6 +49,7 @@ interface Props {
   showChords: boolean;
   transpose?: number;
   sizeLevel?: SizeLevel;
+  forceDark?: boolean;
 }
 
 export default function ChordLyrics({
@@ -56,8 +57,10 @@ export default function ChordLyrics({
   showChords,
   transpose = 0,
   sizeLevel = 1,
+  forceDark = false,
 }: Props) {
-  const { c } = useTheme();
+  const theme = useTheme();
+  const c = forceDark ? colors.dark : theme.c;
   const s = buildStyles(c, sizeLevel);
   const lines = lyrics.split('\n');
 

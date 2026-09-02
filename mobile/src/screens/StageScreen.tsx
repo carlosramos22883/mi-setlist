@@ -192,6 +192,7 @@ export default function StageScreen({ songId, setlistId, groupName, onBack }: Pr
           showChords={showChords}
           transpose={transpose}
           sizeLevel={sizeLevel}
+          forceDark
         />
         <View style={{ height: 240 }} />
       </ScrollView>
