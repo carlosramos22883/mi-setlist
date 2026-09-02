@@ -271,6 +271,19 @@ export default function GroupDetailScreen({ groupId, onBack, onNavigate }: Props
             <Text style={globalStyles.buttonText}>🎼 Setlists</Text>
           </TouchableOpacity>
 
+          <TouchableOpacity
+            style={[globalStyles.button, styles.actionBtn]}
+            onPress={() =>
+              onNavigate('events', {
+                groupId: group.id,
+                groupName: group.name,
+                myRole: group.myRole,
+              })
+            }
+          >
+            <Text style={globalStyles.buttonText}>📅 Eventos</Text>
+          </TouchableOpacity>
+
           {canInvite && (
             <TouchableOpacity
               style={[globalStyles.button, styles.actionBtn]}

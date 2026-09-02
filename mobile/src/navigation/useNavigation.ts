@@ -21,7 +21,10 @@ export type ScreenName =
   | 'songs'        //crud canciones
   | 'songDetail'   //detalle de canción
   | 'setlists'        //crud setlist
-  | 'setlistDetail';  //detalle de setlist
+  | 'setlistDetail'  //detalle de setlist
+  | 'events'       // crud setlist 
+  | 'eventDetail'; // detalle de evento
+
 
 export function useNavigation(initial: ScreenName = 'auth') {
   const [screen, setScreen] = useState<ScreenName>(initial);

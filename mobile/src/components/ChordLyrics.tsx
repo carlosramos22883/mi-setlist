@@ -9,6 +9,7 @@ import React from 'react';
 import { Platform, StyleSheet, Text, View } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import type { Palette } from '../constants/theme';
+import { transposeChord } from '../utils/transpose';
 
 interface Segment {
   chord: string | null;
@@ -49,9 +50,10 @@ function parseLine(line: string): Segment[] {
 interface Props {
   lyrics: string;
   showChords: boolean;
+  transpose?: number;
 }
 
-export default function ChordLyrics({ lyrics, showChords }: Props) {
+export default function ChordLyrics({ lyrics, showChords, transpose = 0 }: Props) {
   const { c } = useTheme();
   const s = buildStyles(c);
   const lines = lyrics.split('\n');
@@ -88,8 +90,8 @@ export default function ChordLyrics({ lyrics, showChords }: Props) {
         return (
           <View key={i} style={s.lineRow}>
             {segments.map((seg, j) => (
-              <View key={j} style={s.segment}>
-                <Text style={s.chord}>{seg.chord ?? ' '}</Text>
+              <View key={j} style={s.segment}>                
+                <Text style={s.chord}>{transposeChord(seg.chord ?? '', transpose)}</Text>
                 <Text style={s.segmentText}>{seg.text}</Text>
               </View>
             ))}

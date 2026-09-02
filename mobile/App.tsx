@@ -21,6 +21,8 @@ import SongsScreen from './src/screens/SongsScreen';
 import SongDetailScreen from './src/screens/SongDetailScreen';
 import SetlistsScreen from './src/screens/SetlistsScreen';
 import SetlistDetailScreen from './src/screens/SetlistDetailScreen';
+import EventsScreen from './src/screens/EventsScreen';
+import EventDetailScreen from './src/screens/EventDetailScreen';
 import { ThemeProvider } from './src/context/ThemeContext';
 import AppShell from './src/components/AppShell';
 import { HeaderActionsProvider } from './src/context/HeaderActionsContext';
@@ -151,6 +153,41 @@ function Root() {
           />
         );
       break;
+      case 'events':
+        content = (
+          <EventsScreen
+            groupId={params.groupId!}
+            groupName={params.groupName ?? ''}
+            myRole={myRole}
+            onBack={() => navigate('groupDetail', { groupId: params.groupId })}
+            onOpenEvent={(eventId) =>
+              navigate('eventDetail', {
+                groupId: params.groupId,
+                groupName: params.groupName,
+                myRole,
+                eventId,
+              })
+            }
+          />
+        );
+      break;
+      case 'eventDetail':
+        content = (
+          <EventDetailScreen
+            eventId={params.eventId!}
+            groupId={params.groupId!}
+            groupName={params.groupName ?? ''}
+            myRole={myRole}
+            onBack={() =>
+              navigate('events', {
+                groupId: params.groupId,
+                groupName: params.groupName,
+                myRole,
+              })
+            }
+          />
+        );
+        break;      
       default:
         content = <HomeScreen onNavigate={navigate} />;
     }
