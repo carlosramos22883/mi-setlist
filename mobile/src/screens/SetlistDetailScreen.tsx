@@ -14,10 +14,11 @@ import * as SongsService from '../services/songs.service';
 import type { Song } from '../services/songs.service';
 import { useTheme } from '../context/ThemeContext';
 import type { Palette } from '../constants/theme';
-import { confirmAction, showSuccess } from '../utils/dialogs';
+import { showAlert, confirmAction, showSuccess } from '../utils/dialogs';
 import ScreenHeader from '../components/ScreenHeader';
 import FormModal from '../components/FormModal';
 import SetlistFormModal from '../components/SetlistFormModal';
+import * as PdfService from '../services/pdf.service';
 
 interface Props {
   setlistId: string;
@@ -34,6 +35,8 @@ export default function SetlistDetailScreen({
   const { can } = useAuth();
   const { c, g: globalStyles } = useTheme();
   const s = buildStyles(c);
+
+  const [pdfLoading, setPdfLoading] = useState(false);
 
   const [setlist, setSetlist] = useState<SetlistDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -165,6 +168,17 @@ export default function SetlistDetailScreen({
     );
   }
 
+  async function handlePdf() {
+    setPdfLoading(true);
+    try {
+      await PdfService.openSetlistPdf(setlistId);
+    } catch {
+      showAlert('Error', 'No se pudo generar el PDF');
+    } finally {
+      setPdfLoading(false);
+    }
+  }
+
   if (loading) {
     return (
       <View style={[globalStyles.screen, s.loadingWrap]}>
@@ -226,10 +240,20 @@ export default function SetlistDetailScreen({
             </View>
           )}
         </View>
-        {/* 🎸 Modo escenario (cualquier miembro) */}
-        <TouchableOpacity style={s.stageBtn} onPress={onStage}>
-          <Text style={s.stageBtnText}>🎸 Modo escenario</Text>
-        </TouchableOpacity>
+        
+        {/* 🎸 Escenario + 📄 PDF (cualquier miembro) */}
+        <View style={s.stageRow}>
+          <TouchableOpacity style={s.stageBtn} onPress={onStage}>
+            <Text style={s.stageBtnText}>🎸 Escenario</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[s.stageBtn, pdfLoading && s.stageBtnDisabled]}
+            onPress={handlePdf}
+            disabled={pdfLoading}
+          >
+            <Text style={s.stageBtnText}>{pdfLoading ? 'Generando…' : '📄 PDF'}</Text>
+          </TouchableOpacity>
+        </View>
 
         {/* Agregar canción */}
         {canManage && (
@@ -484,12 +508,14 @@ const buildStyles = (c: Palette) =>
       borderColor: c.border,
     },
     notesInput: { minHeight: 70, textAlignVertical: 'top' },    
+        stageRow: { flexDirection: 'row', gap: 12, marginBottom: 12 },
     stageBtn: {
+      flex: 1,
       backgroundColor: c.primary,
       borderRadius: 9999,
       alignItems: 'center',
       paddingVertical: 14,
-      marginBottom: 12,
     },
+    stageBtnDisabled: { opacity: 0.5 },
     stageBtnText: { color: '#FFFFFF', fontSize: 15, fontWeight: '800' },
   });

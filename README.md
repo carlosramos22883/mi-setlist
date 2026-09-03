@@ -4,25 +4,13 @@ Plataforma multiplataforma (iOS, Android y Web) para músicos, coros y bandas qu
 
 ## Tecnologías
 
-### Backend
-- **Runtime:** Node.js (LTS)
-- **Lenguaje:** TypeScript
-- **Framework:** NestJS
-- **ORM:** Prisma
-- **Base de Datos:** PostgreSQL 16
-- **Autenticación:** JWT + Refresh Tokens + Google OAuth
-
-### Frontend
-- **Framework:** React Native con Expo
-- **Lenguaje:** TypeScript
-- **Navegación:** Expo Router
-- **Plataformas:** iOS, Android y Web
-
-### Infraestructura
-- **Contenedores:** Docker & Docker Compose
-- **Base de Datos:** PostgreSQL 16
-- **Email Testing:** Mailpit
-- **CI/CD:** GitHub Actions (próximamente)
+- **Backend**: NestJS 10.x
+- **Lenguaje**: TypeScript 5.x (ambos lados)
+- **ORM**: Prisma
+- **Base de Datos**: PostgreSQL 16
+- **Frontend**: React Native con Expo (Web + iOS + Android)
+- **Contenedores**: Docker & Docker Compose
+- **Email Testing**: Mailpit
 
 ![Node.js](https://img.shields.io/badge/Node.js-LTS-339933?style=for-the-badge&logo=node.js&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
@@ -36,7 +24,7 @@ Plataforma multiplataforma (iOS, Android y Web) para músicos, coros y bandas qu
 - Docker y Docker Compose
 - Node.js 20+ (LTS)
 - Git
-- Expo Go (para pruebas en móvil físico)
+- Expo Go (para pruebas en móvil físico, opcional)
 
 ## Instalación
 
@@ -59,15 +47,15 @@ docker compose up -d
 docker compose ps
 ```
 
-### 4. Backend - Instalar dependencias
+### 4. Backend - Instalar dependencias y preparar base de datos
 
 ```bash
 cd api
 npm install
 cp .env.example .env
-npm run prisma:generate
-npm run prisma:migrate
-npm run prisma:seed
+npx prisma generate
+npx prisma migrate dev
+npx prisma db seed
 npm run start:dev
 ```
 
@@ -76,8 +64,9 @@ npm run start:dev
 ```bash
 cd mobile
 npm install
-npx expo start --port 8082
+npm run web
 ```
+El servidor web arrancará automáticamente en http://localhost:8082.
 
 ### 6. Correos en ambiente de pruebas
 
@@ -97,7 +86,7 @@ Una vez que los contenedores estén corriendo, puedes acceder a:
 | **Swagger (API Docs)** | http://localhost:3000/api/docs | - |
 | **Frontend Web (Expo)** | http://localhost:8082 | - |
 | **Mailpit (emails)** | http://localhost:8026 | - |
-| **PostgreSQL** | localhost:5434 | User: misetlist / Pass: misetlist_secret |
+| **PostgreSQL** | localhost:5434 | User: misetlist / Pass: misetlist |
 
 ## Credenciales de Prueba
 
@@ -114,37 +103,63 @@ Una vez que los contenedores estén corriendo, puedes acceder a:
 - Registro e inicio de sesión de usuarios
 - Verificación de correo electrónico
 - Recuperación de contraseña
-- Autenticación social con Google
-- JWT con Access + Refresh Tokens
-- Rotación de tokens y revocación remota
+- Soft delete de usuarios con actividad (grupos/membresías)
+- Administración de usuarios y roles desde la app (RBAC)
+- JWT con Access + Refresh Tokens y rotación
 - Sistema de roles y permisos granular (RBAC)
+- Doble validación: permiso global + rol contextual en el grupo
 
 ### Grupos Musicales
 - Crear y administrar grupos (coros, bandas, orquestas)
-- Invitar miembros por email o enlace
+- Subir logo del grupo (recorte circular + sharp)
+- Invitar miembros por email
 - Roles dentro del grupo: Owner, Admin, Member
-- Actividad y feed del grupo
+- Abandono y eliminación de grupos
 
 ### Canciones y Repertorio
-- CRUD completo de canciones
-- Letra con acordes estructurados
-- Notas personales por músico
-- Categorías múltiples por canción
-- Archivos adjuntos (PDFs, audios, imágenes)
-- Sistema de favoritos
-- Búsqueda avanzada y filtros
+- CRUD completo de canciones por grupo
+- Letra con acordes en formato ChordPro ([D]texto)
+- Tablaturas con fuente monoespaciada
+- Tonalidad, BPM, duración, idioma y género
+- Categorías múltiples por canción (con color)
+- Notas personales por músico (privadas)
+- Sistema de favoritos con filtro "solo mis favoritas"
+- Búsqueda por título, artista y género
 
-### Eventos y Setlists
-- Crear eventos con ubicación geográfica (mapas)
-- Setlists personalizables con drag & drop
-- Tonalidad configurable por canción
-- Modo Escenario para presentaciones en vivo
-- Generación de PDFs de repertorios
+### Setlists (Repertorios)
+- Crear setlists por grupo
+- Agregar canciones del repertorio
+- Reordenamiento con botones ▲▼ (drag & drop en build nativo)
+- Tonalidad específica por canción (customKey)
+- Notas específicas por canción en el setlist
+- Duración total estimada
+
+### Eventos
+- Crear eventos con fecha, hora, lugar y dirección
+- Filtro próximos / pasados / todos
+- Asistencia: Asistiré / Tal vez / No iré (acción personal)
+- Setlists asociados al evento
+- Enlace "Cómo llegar" a Google Maps
+
+### Modo Escenario
+- Pantalla inmersiva con tema oscuro forzado
+- Transposición de acordes en vivo (±6 semitonos)
+- Tamaño de texto ajustable (3 niveles)
+- Auto-scroll con velocidad variable (1-5) y pausa
+- Ocultar/mostrar acordes y tablaturas
+- Navegación anterior/siguiente en modo setlist
+- Pantalla completa en web
+
+### PDFs
+- PDF de canción tipo cancionero (acordes alineados sobre la letra)
+- PDF de setlist numerado con tonalidad y artista
+- Generación en backend con pdfkit
 
 ### Multiplataforma
-- App iOS y Android (React Native + Expo)
-- Versión Web (Expo Web)
-- Diseño responsive y modo oscuro/claro
+- Web (Expo Web)
+- iOS y Android (React Native + Expo)
+- Tema oscuro/claro con persistencia
+- Diseño responsive y consistente entre plataformas
 
 ## Estructura del Proyecto
 
@@ -154,27 +169,32 @@ mi-setlist/
 │   ├── src/
 │   │   ├── auth/
 │   │   ├── users/
+│   │   ├── roles/
 │   │   ├── groups/
-│   │   ├── songs/
-│   │   ├── events/
+│   │   ├── uploads/
+│   │   ├── mail/
+│   │   ├── public/
+│   │   ├── common/
+│   │   ├── prisma/
+│   │   ├── songs/        # incluye categories
 │   │   ├── setlists/
-│   │   └── prisma/
+│   │   ├── events/
+│   │   └── pdf/
 │   ├── prisma/
 │   │   ├── schema.prisma
 │   │   ├── migrations/
 │   │   └── seed.ts
 │   └── package.json
 ├── mobile/               # Frontend React Native
-│   ├── app/
 │   ├── src/
 │   │   ├── components/
-│   │   ├── hooks/
+│   │   ├── constants/
+│   │   ├── context/
+│   │   ├── navigation/
+│   │   ├── screens/
 │   │   ├── services/
-│   │   ├── stores/
-│   │   └── constants/
+│   │   └── utils/
 │   └── package.json
-├── docs/                 # Documentación del proyecto
-├── assets/               # Logo, branding
 └── docker-compose.yml
 ```
 
